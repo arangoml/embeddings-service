@@ -24,13 +24,16 @@ const seedData = [
         type: modelTypes.WORD_EMBEDDING,
         name: "DistilBERT",
         _key: "DistilBERT",
-        emb_dim: 768
+        emb_dim: 768,
+        // This is the name that this model will have on the compute node. May differ from display name
+        invocation_name: "DistilBERT"
     },
     {
         type: modelTypes.GRAPH_MODEL,
         name: "GraphSAGE",
         _key: "GraphSAGE",
-        emb_dim: 64
+        emb_dim: 64,
+        invocation_name: "GraphSAGE"
     }
 ];
 
