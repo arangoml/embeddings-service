@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/arangoml/embeddings-service#readme",
   "dependencies": {
-    "@types/arangodb": "^3.5.13"
+    "@types/arangodb": "^3.5.13",
+    "@types/joi": "^14.3.1"
   }
 }
