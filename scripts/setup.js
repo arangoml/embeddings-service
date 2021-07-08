@@ -11,6 +11,7 @@ const modelTypes = {
 };
 
 exports.modelTypes = modelTypes;
+exports.metadataCollectionName = METADATA_DOC_COLLECTION;
 
 const modelMetadataSchema = {
     rule: {

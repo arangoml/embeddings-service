@@ -2,24 +2,29 @@
 
 const {context} = require("@arangodb/locals");
 const createRouter = require("@arangodb/foxx/router");
-const {query} = require("@arangodb");
+const {query, db} = require("@arangodb");
 const joi = require("joi");
+const {modelTypes, metadataCollectionName} = require("./scripts/setup");
 
 const router = createRouter();
 context.use(router);
 
-const METADATA_DOC_COLLECTION_NAME = "_model_metadata";
 
-router.post("/generate_embeddings", (req, res) => {
-    // TODO:
-    // First retrieve model metadata from document
-    // Check if the arguments are valid, either for word embeddings or graph embeddings
-    // Word embeddings case, require field on document that should be embedded
-    // Check with a quick AQL query that this is actually valid
+function retrieveModel(modelName, modelType) {
+    const metadata_col = db._collection(metadataCollectionName);
+    const model_info = query`
+        FOR m in ${metadata_col}
+        FILTER m.name == ${modelName}
+        AND m.model_type == ${modelType}
+        RETURN m
+    `.toArray()
 
-    // Then once the schema has been validated, pass the arguments on to the generate batches function
-    generateBatches();
-});
+    if (model_info.length > 0) {
+        return model_info[0];
+    }
+    // if we don't have a model, return null
+    return null;
+}
 
 /**
  * Queue batch jobs to generate embeddings for a specified graph or collection.
@@ -28,10 +33,46 @@ function generateBatches() {
     throw new Error("Implement me!");
 }
 
+router.post("/generate_embeddings", (req, res) => {
+    // check if model type is valid
+    if (!Object.values(modelTypes).some(v => v == req.body.modelType)) {
+        res.sendStatus(422);
+        res.json(`Invalid model type: ${req.body.modelType}`);
+        return;
+    }
+    // TODO:
+    // First retrieve model metadata from document
+    const modelMetadata = retrieveModel(req.body.modelName, req.body.modelType)
+
+    if (modelMetadata == null) {
+        res.sendStatus(422);
+        res.json(`Invalid model: ${req.body.modelName} of type ${req.body.modelType}`);
+        return;
+    }
+
+    // Check if the arguments are valid, either for word embeddings or graph embeddings
+    // Word embeddings case, require field on document that should be embedded
+    // Check with a quick AQL query that this is actually valid
+
+    // Then once the schema has been validated, pass the arguments on to the generate batches function
+    generateBatches();
+}).body(
+    joi.object({
+        modelName: joi.string().required(),
+        modelType: joi.string().required(),
+        // should pick either one of these, but not both
+        collectionName: joi.string(),
+        graphName: joi.string(),
+        // then pick field
+        // (for graph embeddings this is a set of features, for word embeddings this is a text field)
+        fieldName: joi.string().required()
+    }).required()
+);
+
 
 router.get("/models", (_req, res) => {
     // Query the model metadata collection and return the results here!
-    const metadata_col = context.collection(METADATA_DOC_COLLECTION_NAME);
+    const metadata_col = db._collection(metadataCollectionName);
     const model_metadata = query`
         FOR m in ${metadata_col}
         RETURN {
