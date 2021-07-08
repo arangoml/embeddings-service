@@ -47,14 +47,9 @@ function initialValidationGenerateEmbParams(req, res) {
     }
 
     // either but not both on collection
-    if (req.body.collectionName && req.body.graphName && req.body.collectionName.length > 0 && req.body.graphName.length > 0) {
+    if (!req.body.collectionName) {
         return sendInvalidInputMessage(res,
-            `Please supply one of either collectionName or graphName. Got both collectionName: ${req.body.collectionName}, graphName: ${req.body.graphName}`
-        );
-    }
-    if (!(req.body.collectionName || req.body.graphName)) {
-        return sendInvalidInputMessage(res,
-            "Please supply either a collectionName or graphName");
+            "Please supply a collectionName");
     }
 
     if (req.body.fieldName.length === 0) {
@@ -142,7 +137,12 @@ router.post("/generate_embeddings", (req, res) => {
 
     // Check if the arguments are valid, either for word embeddings or graph embeddings
     if (graphName && checkGraphIsPresent(graphName)) {
-        throw new Error("Implement graph support");
+        if (checkCollectionIsPresent(collectionName)) {
+            generateBatchesGraph(res, graphName, fieldName, modelMetadata);
+        } else {
+            sendInvalidInputMessage(res,
+                `Collection named ${colName} does not exist.`);
+        }
     } else if (checkCollectionIsPresent(collectionName)) {
         generateBatchesCollection(res, collectionName, fieldName, modelMetadata);
     } else {
@@ -154,12 +154,12 @@ router.post("/generate_embeddings", (req, res) => {
             modelName: joi.string().required(),
             modelType: joi.string().required().allow(Object.values(modelTypes)),
             // should pick either one of these, but not both
-            collectionName: joi.string(),
+            collectionName: joi.string().required(),
             graphName: joi.string(),
             // then pick field
             // (for graph embeddings this is a set of features, for word embeddings this is a text field)
             fieldName: joi.string().required()
-        }).required()
+        }).required(),
             // This seems to be encased in a "value" object in the swagger doc
             // .example([{
             //     modelName: "distilbert-base-uncased",
@@ -167,6 +167,16 @@ router.post("/generate_embeddings", (req, res) => {
             //     collectionName: "imdb_vertices",
             //     fieldName: "description"
             // }])
+        ["application/json"],
+        `This endpoint triggers the creation of embeddings for a specified collection or graph.
+         You will need to provide the name and type of an embedding model (available models can be listed using the \`/models\` endpoint.
+         Body required:
+         \`modelName\`: name of the model
+         \`modelType\`: type of the model. Currently supported: ${Object.values(modelTypes).map(v => `\`${v}\``)}
+         \`collectionName\`: name of the collection that you want to embed
+         \`graphName\`: name of the graph that you want to embed (please note: not required if generating node specific features e.g. word embeddings)
+         \`fieldName\`: name of the field to embed. For graph embeddings this is a feature vector, for word embeddings this is a string.
+         `
     ).response(
         400,
         "Improperly formatted input"
