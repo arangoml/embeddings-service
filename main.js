@@ -4,12 +4,18 @@ const {context} = require("@arangodb/locals");
 const createRouter = require("@arangodb/foxx/router");
 const {query, db} = require("@arangodb");
 const graph_module = require("@arangodb/general-graph");
+const queues = require("@arangodb/foxx/queues");
 const joi = require("joi");
 const {modelTypes, metadataCollectionName} = require("./scripts/setup");
 
 const router = createRouter();
 context.use(router);
 
+// TODO: Make this model specific?
+const batch_size = 64;
+exports.BATCH_SIZE = batch_size;
+
+const embeddingQueueName = "embeddings_generation";
 
 function retrieveModel(modelName, modelType) {
     const metadata_col = db._collection(metadataCollectionName);
@@ -67,10 +73,45 @@ function checkCollectionIsPresent(collectionName) {
     return db._collections().map(c => c.name()).some(n => n === collectionName)
 }
 
+function queueCollectionBatch(i, batchSize, colName, fieldName, modelMetadata, embeddingsQueue) {
+    embeddingsQueue.push(
+        {
+            mount: context.mount,
+            name: "createEmbeddings"
+        },
+        {
+            collectionName: colName,
+            batchInd: i,
+            modelMetadata,
+            fieldName,
+            batchSize
+        }
+    );
+}
+
 /**
  * Queue batch jobs to generate embeddings for a specified collection.
  */
 function generateBatchesCollection(res, colName, fieldName, modelMetadata) {
+    const myCol = db._collection(colName);
+    const numberOfDocuments = query`
+    RETURN COUNT(
+        FOR doc in ${myCol}
+        FILTER doc.${fieldName} != null
+        RETURN 1
+    )
+    `.toArray();
+    console.log(numberOfDocuments[0]);
+
+    const numBatches = Math.ceil(numberOfDocuments / batch_size);
+
+    const embQ = queues.create(embeddingQueueName);
+
+    Array(numBatches)
+        .fill()
+        .map((_, i) => i)
+        .forEach(i => queueCollectionBatch(i, batch_size, colName, fieldName, modelMetadata, embQ));
+
     res.sendStatus(200);
     res.json(`Queued generation of embeddings for collection ${colName} using ${modelMetadata.name} on the ${fieldName} field`);
 }

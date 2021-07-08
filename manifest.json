@@ -4,6 +4,7 @@
   },
   "main": "main.js",
   "scripts": {
-    "setup": "scripts/setup.js"
+    "setup": "scripts/setup.js",
+    "createEmbeddings": "scripts/create_embeddings.js"
   }
 }
