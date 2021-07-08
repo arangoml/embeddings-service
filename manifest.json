@@ -5,6 +5,7 @@
   "main": "main.js",
   "scripts": {
     "setup": "scripts/setup.js",
-    "createEmbeddings": "scripts/create_embeddings.js"
+    "createNodeEmbeddings": "scripts/create_node_embeddings.js",
+    "createGraphEmbeddings": "scripts/create_graph_embeddings.js"
   }
 }

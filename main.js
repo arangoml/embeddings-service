@@ -72,11 +72,28 @@ function queueCollectionBatch(i, batchSize, colName, fieldName, modelMetadata, e
     embeddingsQueue.push(
         {
             mount: context.mount,
-            name: "createEmbeddings"
+            name: "createNodeEmbeddings"
         },
         {
             collectionName: colName,
             batchInd: i,
+            modelMetadata,
+            fieldName,
+            batchSize
+        }
+    );
+}
+
+function queueGraphBatch(i, batchSize, colName, graphName, fieldName, modelMetadata, embeddingsQueue) {
+    embeddingsQueue.push(
+        {
+            mount: context.mount,
+            name: "createGraphEmbeddings"
+        },
+        {
+            collectionName: colName,
+            batchInd: i,
+            graphName,
             modelMetadata,
             fieldName,
             batchSize
@@ -96,7 +113,6 @@ function generateBatchesCollection(res, colName, fieldName, modelMetadata) {
         RETURN 1
     )
     `.toArray();
-    console.log(numberOfDocuments[0]);
 
     const numBatches = Math.ceil(numberOfDocuments / batch_size);
 
@@ -114,8 +130,27 @@ function generateBatchesCollection(res, colName, fieldName, modelMetadata) {
 /**
  * Queue batch jobs to generate embeddings for a specified graph.
  */
-function generateBatchesGraph(res, graphName, fieldName, modelMetadata) {
-    throw new Error("Implement me!");
+function generateBatchesGraph(res, graphName, collectionName, fieldName, modelMetadata) {
+    const myCol = db._collection(collectionName);
+    const numberOfDocuments = query`
+    RETURN COUNT(
+        FOR doc in ${myCol}
+        FILTER doc.${fieldName} != null
+        RETURN 1
+    )
+    `.toArray();
+
+    const numBatches = Math.ceil(numberOfDocuments / batch_size);
+
+    const embQ = queues.create(embeddingQueueName);
+
+    Array(numBatches)
+        .fill()
+        .map((_, i) => i)
+        .forEach(i => queueGraphBatch(i, batch_size, collectionName, graphName, fieldName, modelMetadata, embQ));
+
+    res.sendStatus(200);
+    res.json(`Queued generation of embeddings for collection ${collectionName} traversing ${graphName} using ${modelMetadata.name} on the ${fieldName} field`);
 }
 
 
@@ -138,7 +173,17 @@ router.post("/generate_embeddings", (req, res) => {
     // Check if the arguments are valid, either for word embeddings or graph embeddings
     if (graphName && checkGraphIsPresent(graphName)) {
         if (checkCollectionIsPresent(collectionName)) {
-            generateBatchesGraph(res, graphName, fieldName, modelMetadata);
+            // Short circuit to collection creation if model is word embedding
+            switch (modelMetadata.model_type) {
+                case modelTypes.WORD_EMBEDDING:
+                    generateBatchesCollection(res, collectionName, fieldName, modelMetadata);
+                    break;
+                case modelTypes.GRAPH_MODEL:
+                    generateBatchesGraph(res, graphName, collectionName, fieldName, modelMetadata);
+                    break;
+                default:
+                    throw new Error(`Error: unrecognized model type: ${modelMetadata.model_type}`);
+            }
         } else {
             sendInvalidInputMessage(res,
                 `Collection named ${colName} does not exist.`);
