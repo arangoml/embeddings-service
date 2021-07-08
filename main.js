@@ -33,14 +33,38 @@ function generateBatches() {
     throw new Error("Implement me!");
 }
 
-router.post("/generate_embeddings", (req, res) => {
+function initialValidationGenerateEmbParams(req, res) {
     // check if model type is valid
     if (!Object.values(modelTypes).some(v => v == req.body.modelType)) {
         res.sendStatus(422);
-        res.json(`Invalid model type: ${req.body.modelType}`);
+        res.json(`Invalid model type: ${req.body.modelType}, expected one of ${Object.values(modelTypes)}`);
+        return false;
+    }
+
+    // either but not both on collection
+    if (req.body.collectionName.length > 0 && req.body.graphName.length > 0) {
+        res.sendStatus(422);
+        res.json(
+            `Please supply one of either collectionName or graphName. Got both collectionName: ${req.body.collectionName}, graphName: ${req.body.graphName}`
+        );
+        return false;
+    }
+    if (req.body.collectionName.length === 0 && req.body.graphName.length === 0) {
+        res.sendStatus(422);
+        res.json("Please supply either a collectionName or graphName");
+        return false;
+    }
+
+    return true;
+}
+
+router.post("/generate_embeddings", (req, res) => {
+
+    const paramsValid = initialValidationGenerateEmbParams(req, res);
+    if (!paramsValid) {
         return;
     }
-    // TODO:
+
     // First retrieve model metadata from document
     const modelMetadata = retrieveModel(req.body.modelName, req.body.modelType)
 
