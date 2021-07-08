@@ -109,17 +109,31 @@ router.post("/generate_embeddings", (req, res) => {
             `Graph or collection named ${colName | graphName} does not exist.`);
     }
 }).body(
-    joi.object({
-        modelName: joi.string().required(),
-        modelType: joi.string().required(),
-        // should pick either one of these, but not both
-        collectionName: joi.string(),
-        graphName: joi.string(),
-        // then pick field
-        // (for graph embeddings this is a set of features, for word embeddings this is a text field)
-        fieldName: joi.string().required()
-    }).required()
-);
+        joi.object({
+            modelName: joi.string().required(),
+            modelType: joi.string().required().allow(Object.values(modelTypes)),
+            // should pick either one of these, but not both
+            collectionName: joi.string(),
+            graphName: joi.string(),
+            // then pick field
+            // (for graph embeddings this is a set of features, for word embeddings this is a text field)
+            fieldName: joi.string().required()
+        }).required()
+            // This seems to be encased in a "value" object in the swagger doc
+            // .example([{
+            //     modelName: "distilbert-base-uncased",
+            //     modelType: modelTypes.WORD_EMBEDDING,
+            //     collectionName: "imdb_vertices",
+            //     fieldName: "description"
+            // }])
+    ).response(
+        400,
+        "Improperly formatted input"
+    ).response(
+        422,
+        joi.string(),
+        "Invalid input"
+    ).response(200, joi.string());
 
 
 router.get("/models", (_req, res) => {
