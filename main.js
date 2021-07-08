@@ -3,6 +3,7 @@
 const {context} = require("@arangodb/locals");
 const createRouter = require("@arangodb/foxx/router");
 const {query, db} = require("@arangodb");
+const graph_module = require("@arangodb/general-graph");
 const joi = require("joi");
 const {modelTypes, metadataCollectionName} = require("./scripts/setup");
 
@@ -26,60 +27,87 @@ function retrieveModel(modelName, modelType) {
     return null;
 }
 
-/**
- * Queue batch jobs to generate embeddings for a specified graph or collection.
- */
-function generateBatches() {
-    throw new Error("Implement me!");
+function sendInvalidInputMessage(res, message) {
+    res.sendStatus(422);
+    res.json(message);
+    return false
 }
 
 function initialValidationGenerateEmbParams(req, res) {
     // check if model type is valid
-    if (!Object.values(modelTypes).some(v => v == req.body.modelType)) {
-        res.sendStatus(422);
-        res.json(`Invalid model type: ${req.body.modelType}, expected one of ${Object.values(modelTypes)}`);
-        return false;
+    if (!Object.values(modelTypes).some(v => v === req.body.modelType)) {
+        return sendInvalidInputMessage(res,
+            `Invalid model type: ${req.body.modelType}, expected one of ${Object.values(modelTypes)}`);
     }
 
     // either but not both on collection
-    if (req.body.collectionName.length > 0 && req.body.graphName.length > 0) {
-        res.sendStatus(422);
-        res.json(
+    if (req.body.collectionName && req.body.graphName && req.body.collectionName.length > 0 && req.body.graphName.length > 0) {
+        return sendInvalidInputMessage(res,
             `Please supply one of either collectionName or graphName. Got both collectionName: ${req.body.collectionName}, graphName: ${req.body.graphName}`
         );
-        return false;
     }
-    if (req.body.collectionName.length === 0 && req.body.graphName.length === 0) {
-        res.sendStatus(422);
-        res.json("Please supply either a collectionName or graphName");
-        return false;
+    if (!(req.body.collectionName || req.body.graphName)) {
+        return sendInvalidInputMessage(res,
+            "Please supply either a collectionName or graphName");
+    }
+
+    if (req.body.fieldName.length === 0) {
+        return sendInvalidInputMessage(res,
+            "Please supply a fieldName to use for embeddings generation");
     }
 
     return true;
 }
 
-router.post("/generate_embeddings", (req, res) => {
+function checkGraphIsPresent(graphName) {
+    return graph_module._list().some(g => g === graphName)
+}
 
+function checkCollectionIsPresent(collectionName) {
+    return db._collections().map(c => c.name()).some(n => n === collectionName)
+}
+
+/**
+ * Queue batch jobs to generate embeddings for a specified collection.
+ */
+function generateBatchesCollection(res, colName, fieldName, modelMetadata) {
+    res.sendStatus(200);
+    res.json(`Queued generation of embeddings for collection ${colName} using ${modelMetadata.name} on the ${fieldName} field`);
+}
+
+/**
+ * Queue batch jobs to generate embeddings for a specified graph.
+ */
+function generateBatchesGraph(res, graphName, fieldName, modelMetadata) {
+    throw new Error("Implement me!");
+}
+
+
+router.post("/generate_embeddings", (req, res) => {
     const paramsValid = initialValidationGenerateEmbParams(req, res);
     if (!paramsValid) {
         return;
     }
 
+    const {modelName, modelType, fieldName, graphName, collectionName} = req.body;
     // First retrieve model metadata from document
-    const modelMetadata = retrieveModel(req.body.modelName, req.body.modelType)
+    const modelMetadata = retrieveModel(modelName, modelType)
 
     if (modelMetadata == null) {
-        res.sendStatus(422);
-        res.json(`Invalid model: ${req.body.modelName} of type ${req.body.modelType}`);
+        sendInvalidInputMessage(res,
+            `Invalid model: ${modelName} of type ${modelType}`);
         return;
     }
 
     // Check if the arguments are valid, either for word embeddings or graph embeddings
-    // Word embeddings case, require field on document that should be embedded
-    // Check with a quick AQL query that this is actually valid
-
-    // Then once the schema has been validated, pass the arguments on to the generate batches function
-    generateBatches();
+    if (graphName && checkGraphIsPresent(graphName)) {
+        throw new Error("Implement graph support");
+    } else if (checkCollectionIsPresent(collectionName)) {
+        generateBatchesCollection(res, collectionName, fieldName, modelMetadata);
+    } else {
+        sendInvalidInputMessage(res,
+            `Graph or collection named ${colName | graphName} does not exist.`);
+    }
 }).body(
     joi.object({
         modelName: joi.string().required(),
