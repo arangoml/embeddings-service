@@ -76,7 +76,7 @@ function queueCollectionBatch(i, batchSize, colName, fieldName, modelMetadata, e
         },
         {
             collectionName: colName,
-            batchInd: i,
+            batchIndex: i,
             modelMetadata,
             fieldName,
             batchSize
@@ -92,7 +92,7 @@ function queueGraphBatch(i, batchSize, colName, graphName, fieldName, modelMetad
         },
         {
             collectionName: colName,
-            batchInd: i,
+            batchIndex: i,
             graphName,
             modelMetadata,
             fieldName,
