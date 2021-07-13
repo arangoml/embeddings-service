@@ -10,22 +10,20 @@ const {retrieveModel} = require("../services/model_metadata_service");
 function initialValidationGenerateEmbParams(req, res) {
     // check if model type is valid
     if (!Object.values(modelTypes).some(v => v === req.body.modelType)) {
-        return sendInvalidInputMessage(res,
+        sendInvalidInputMessage(res,
             `Invalid model type: ${req.body.modelType}, expected one of ${Object.values(modelTypes)}`);
     }
 
     // either but not both on collection
     if (!req.body.collectionName) {
-        return sendInvalidInputMessage(res,
+        sendInvalidInputMessage(res,
             "Please supply a collectionName");
     }
 
     if (req.body.fieldName.length === 0) {
-        return sendInvalidInputMessage(res,
+        sendInvalidInputMessage(res,
             "Please supply a fieldName to use for embeddings generation");
     }
-
-    return true;
 }
 
 function checkGraphIsPresent(graphName) {
@@ -37,9 +35,7 @@ function checkCollectionIsPresent(collectionName) {
 }
 
 function generateEmbeddings(req, res) {
-    if (!initialValidationGenerateEmbParams(req, res)) {
-        return;
-    }
+    initialValidationGenerateEmbParams(req, res);
 
     const {modelName, modelType, fieldName, graphName, collectionName} = req.body;
 
@@ -47,13 +43,11 @@ function generateEmbeddings(req, res) {
     if (!checkCollectionIsPresent(collectionName)) {
         sendInvalidInputMessage(res,
             `Collection named ${collectionName} does not exist.`);
-        return;
     }
 
     if (graphName && !checkGraphIsPresent(graphName)) {
         sendInvalidInputMessage(res,
             `Graph named ${graphName} does not exist.`);
-        return;
     }
 
     // retrieve model metadata from document
@@ -62,7 +56,6 @@ function generateEmbeddings(req, res) {
     if (modelMetadata == null) {
         sendInvalidInputMessage(res,
             `Invalid model: ${modelName} of type ${modelType}`);
-        return;
     }
 
     const message = generateBatchesForModel(graphName, collectionName, fieldName, modelMetadata);
