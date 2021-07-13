@@ -1,22 +1,6 @@
-const {query, db} = require("@arangodb");
+const {db} = require("@arangodb");
 const graph_module = require("@arangodb/general-graph");
-const {modelTypes, metadataCollectionName} = require("../model/model_metadata");
-
-function retrieveModel(modelName, modelType) {
-    const metadata_col = db._collection(metadataCollectionName);
-    const model_info = query`
-        FOR m in ${metadata_col}
-        FILTER m.name == ${modelName}
-        AND m.model_type == ${modelType}
-        RETURN m
-    `.toArray()
-
-    if (model_info.length > 0) {
-        return model_info[0];
-    }
-    // if we don't have a model, return null
-    return null;
-}
+const {modelTypes} = require("../model/model_metadata");
 
 function sendInvalidInputMessage(res, message) {
     res.throw(422, message);
@@ -52,7 +36,6 @@ function checkCollectionIsPresent(collectionName) {
     return db._collections().map(c => c.name()).some(n => n === collectionName)
 }
 
-exports.retrieveModel = retrieveModel;
 exports.sendInvalidInputMessage = sendInvalidInputMessage;
 exports.initialValidationGenerateEmbParams = initialValidationGenerateEmbParams;
 exports.checkGraphIsPresent = checkGraphIsPresent;

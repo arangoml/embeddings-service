@@ -5,12 +5,12 @@ const createRouter = require("@arangodb/foxx/router");
 const joi = require("joi");
 const {generateBatchesCollection, generateBatchesGraph} = require("./dispatcher");
 const {
-    retrieveModel,
     checkCollectionIsPresent,
     checkGraphIsPresent,
     sendInvalidInputMessage,
     initialValidationGenerateEmbParams
 } = require("./validation");
+const {retrieveModel} = require("./model_metadata");
 const {metadataCollectionName, modelTypes} = require("../model/model_metadata");
 
 function initRouter() {
