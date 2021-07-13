@@ -1,5 +1,6 @@
 const {context} = require("@arangodb/locals");
 const queues = require("@arangodb/foxx/queues");
+const {modelTypes} = require("../model/model_metadata");
 const {query, db} = require("@arangodb");
 
 // TODO: Make this model specific?
@@ -91,6 +92,29 @@ function generateBatchesGraph(graphName, collectionName, fieldName, modelMetadat
     return true;
 }
 
+function generateBatchesForModel(graphName, collectionName, fieldName, modelMetadata) {
+    switch (modelMetadata.model_type) {
+        case modelTypes.WORD_EMBEDDING: {
+            const isQueued = generateBatchesCollection(collectionName, fieldName, modelMetadata);
+            if (isQueued) {
+                return `Queued generation of embeddings for collection ${collectionName} using ${modelMetadata.name} on the ${fieldName} field`;
+            }
+            break;
+        }
+        case modelTypes.GRAPH_MODEL: {
+            if (!graphName) {
+                throw new Error("Requested to generate graph embeddings but no graph is provided");
+            }
+            const isQueued = generateBatchesGraph(graphName, collectionName, fieldName, modelMetadata);
+            if (isQueued) {
+                return `Queued generation of embeddings for collection ${collectionName} traversing ${graphName} using ${modelMetadata.name} on the ${fieldName} field`;
+            }
+            break;
+        }
+        default:
+            throw new Error(`Error: unrecognized model type: ${modelMetadata.model_type}`);
+    }
+}
+
 exports.BATCH_SIZE = batch_size;
-exports.generateBatchesCollection = generateBatchesCollection;
-exports.generateBatchesGraph = generateBatchesGraph;
+exports.generateBatchesForModel = generateBatchesForModel;

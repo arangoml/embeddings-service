@@ -1,9 +1,9 @@
 const {db} = require("@arangodb");
 const graph_module = require("@arangodb/general-graph");
+const {generateBatchesForModel} = require("../services/embeddings_service");
 const {modelTypes} = require("../model/model_metadata");
 const {sendInvalidInputMessage} = require("../utils/invalid_input");
 const {retrieveModel} = require("../services/model_metadata_service");
-const {generateBatchesCollection, generateBatchesGraph} = require("../services/embeddings_service");
 
 function initialValidationGenerateEmbParams(req, res) {
     // check if model type is valid
@@ -50,37 +50,20 @@ function generateEmbeddings(req, res) {
     }
 
     // Check if the arguments are valid, either for word embeddings or graph embeddings
-    if (graphName && checkGraphIsPresent(graphName)) {
-        if (checkCollectionIsPresent(collectionName)) {
-            // Short circuit to collection creation if model is word embedding
-            switch (modelMetadata.model_type) {
-                case modelTypes.WORD_EMBEDDING: {
-                    const isQueued = generateBatchesCollection(collectionName, fieldName, modelMetadata);
-                    if (isQueued) {
-                        res.json(`Queued generation of embeddings for collection ${colName} using ${modelMetadata.name} on the ${fieldName} field`);
-                    }
-                    break;
-                }
-                case modelTypes.GRAPH_MODEL: {
-                    const isQueued = generateBatchesGraph(graphName, collectionName, fieldName, modelMetadata);
-                    if (isQueued) {
-                        res.json(`Queued generation of embeddings for collection ${collectionName} traversing ${graphName} using ${modelMetadata.name} on the ${fieldName} field`);
-                    }
-                    break;
-                }
-                default:
-                    throw new Error(`Error: unrecognized model type: ${modelMetadata.model_type}`);
-            }
-        } else {
-            sendInvalidInputMessage(res,
-                `Collection named ${collectionName} does not exist.`);
-        }
-    } else if (checkCollectionIsPresent(collectionName)) {
-        generateBatchesCollection(collectionName, fieldName, modelMetadata);
-    } else {
+    if (!checkCollectionIsPresent(collectionName)) {
         sendInvalidInputMessage(res,
-            `Graph or collection named ${collectionName | graphName} does not exist.`);
+            `Collection named ${collectionName} does not exist.`);
+        return;
     }
+
+    if (graphName && !checkGraphIsPresent(graphName)) {
+        sendInvalidInputMessage(res,
+            `Graph named ${graphName} does not exist.`);
+        return;
+    }
+
+    const message = generateBatchesForModel(graphName, collectionName, fieldName, modelMetadata);
+    res.json(message);
 }
 
 exports.generateEmbeddings = generateEmbeddings;
