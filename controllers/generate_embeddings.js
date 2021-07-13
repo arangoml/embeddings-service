@@ -2,8 +2,8 @@ const {db} = require("@arangodb");
 const graph_module = require("@arangodb/general-graph");
 const {modelTypes} = require("../model/model_metadata");
 const {sendInvalidInputMessage} = require("../utils/invalid_input");
-const {retrieveModel} = require("../services/model_metadata");
-const {generateBatchesCollection, generateBatchesGraph} = require("../api/dispatcher");
+const {retrieveModel} = require("../services/model_metadata_service");
+const {generateBatchesCollection, generateBatchesGraph} = require("../services/embeddings_service");
 
 function initialValidationGenerateEmbParams(req, res) {
     // check if model type is valid
@@ -54,12 +54,20 @@ function generateEmbeddings(req, res) {
         if (checkCollectionIsPresent(collectionName)) {
             // Short circuit to collection creation if model is word embedding
             switch (modelMetadata.model_type) {
-                case modelTypes.WORD_EMBEDDING:
-                    generateBatchesCollection(res, collectionName, fieldName, modelMetadata);
+                case modelTypes.WORD_EMBEDDING: {
+                    const isQueued = generateBatchesCollection(collectionName, fieldName, modelMetadata);
+                    if (isQueued) {
+                        res.json(`Queued generation of embeddings for collection ${colName} using ${modelMetadata.name} on the ${fieldName} field`);
+                    }
                     break;
-                case modelTypes.GRAPH_MODEL:
-                    generateBatchesGraph(res, graphName, collectionName, fieldName, modelMetadata);
+                }
+                case modelTypes.GRAPH_MODEL: {
+                    const isQueued = generateBatchesGraph(graphName, collectionName, fieldName, modelMetadata);
+                    if (isQueued) {
+                        res.json(`Queued generation of embeddings for collection ${collectionName} traversing ${graphName} using ${modelMetadata.name} on the ${fieldName} field`);
+                    }
                     break;
+                }
                 default:
                     throw new Error(`Error: unrecognized model type: ${modelMetadata.model_type}`);
             }
@@ -68,7 +76,7 @@ function generateEmbeddings(req, res) {
                 `Collection named ${collectionName} does not exist.`);
         }
     } else if (checkCollectionIsPresent(collectionName)) {
-        generateBatchesCollection(res, collectionName, fieldName, modelMetadata);
+        generateBatchesCollection(collectionName, fieldName, modelMetadata);
     } else {
         sendInvalidInputMessage(res,
             `Graph or collection named ${collectionName | graphName} does not exist.`);

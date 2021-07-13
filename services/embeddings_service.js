@@ -41,8 +41,9 @@ function queueGraphBatch(i, batchSize, colName, graphName, fieldName, modelMetad
 
 /**
  * Queue batch jobs to generate embeddings for a specified collection.
+ * Returns true if batch jobs have been queued. This does NOT mean that they've succeeded yet.
  */
-function generateBatchesCollection(res, colName, fieldName, modelMetadata) {
+function generateBatchesCollection(colName, fieldName, modelMetadata) {
     const myCol = db._collection(colName);
     const numberOfDocuments = query`
     RETURN COUNT(
@@ -61,14 +62,14 @@ function generateBatchesCollection(res, colName, fieldName, modelMetadata) {
         .map((_, i) => i)
         .forEach(i => queueCollectionBatch(i, batch_size, colName, fieldName, modelMetadata, embQ));
 
-    res.sendStatus(200);
-    res.json(`Queued generation of embeddings for collection ${colName} using ${modelMetadata.name} on the ${fieldName} field`);
+    return true;
 }
 
 /**
  * Queue batch jobs to generate embeddings for a specified graph.
+ * Returns true if batch jobs have been queued. This does NOT mean that they've succeeded yet.
  */
-function generateBatchesGraph(res, graphName, collectionName, fieldName, modelMetadata) {
+function generateBatchesGraph(graphName, collectionName, fieldName, modelMetadata) {
     const myCol = db._collection(collectionName);
     const numberOfDocuments = query`
     RETURN COUNT(
@@ -87,8 +88,7 @@ function generateBatchesGraph(res, graphName, collectionName, fieldName, modelMe
         .map((_, i) => i)
         .forEach(i => queueGraphBatch(i, batch_size, collectionName, graphName, fieldName, modelMetadata, embQ));
 
-    res.sendStatus(200);
-    res.json(`Queued generation of embeddings for collection ${collectionName} traversing ${graphName} using ${modelMetadata.name} on the ${fieldName} field`);
+    return true;
 }
 
 exports.BATCH_SIZE = batch_size;
