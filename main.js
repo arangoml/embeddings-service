@@ -34,9 +34,8 @@ function retrieveModel(modelName, modelType) {
 }
 
 function sendInvalidInputMessage(res, message) {
-    res.sendStatus(422);
-    res.json(message);
-    return false
+    res.throw(422, message);
+    return false;
 }
 
 function initialValidationGenerateEmbParams(req, res) {
