@@ -3,58 +3,12 @@
 const {query, db} = require("@arangodb");
 const createRouter = require("@arangodb/foxx/router");
 const joi = require("joi");
-const {generateBatchesCollection, generateBatchesGraph} = require("./dispatcher");
-const {
-    checkCollectionIsPresent,
-    checkGraphIsPresent,
-    sendInvalidInputMessage,
-    initialValidationGenerateEmbParams
-} = require("./validation");
-const {retrieveModel} = require("./model_metadata");
+const {generateEmbeddings} = require("../controllers/generate_embeddings");
 const {metadataCollectionName, modelTypes} = require("../model/model_metadata");
 
 const router = createRouter();
 
-router.post("/generate_embeddings", (req, res) => {
-    if (!initialValidationGenerateEmbParams(req, res)) {
-        return;
-    }
-
-    const {modelName, modelType, fieldName, graphName, collectionName} = req.body;
-    // First retrieve model metadata from document
-    const modelMetadata = retrieveModel(modelName, modelType)
-
-    if (modelMetadata == null) {
-        sendInvalidInputMessage(res,
-            `Invalid model: ${modelName} of type ${modelType}`);
-        return;
-    }
-
-    // Check if the arguments are valid, either for word embeddings or graph embeddings
-    if (graphName && checkGraphIsPresent(graphName)) {
-        if (checkCollectionIsPresent(collectionName)) {
-            // Short circuit to collection creation if model is word embedding
-            switch (modelMetadata.model_type) {
-                case modelTypes.WORD_EMBEDDING:
-                    generateBatchesCollection(res, collectionName, fieldName, modelMetadata);
-                    break;
-                case modelTypes.GRAPH_MODEL:
-                    generateBatchesGraph(res, graphName, collectionName, fieldName, modelMetadata);
-                    break;
-                default:
-                    throw new Error(`Error: unrecognized model type: ${modelMetadata.model_type}`);
-            }
-        } else {
-            sendInvalidInputMessage(res,
-                `Collection named ${collectionName} does not exist.`);
-        }
-    } else if (checkCollectionIsPresent(collectionName)) {
-        generateBatchesCollection(res, collectionName, fieldName, modelMetadata);
-    } else {
-        sendInvalidInputMessage(res,
-            `Graph or collection named ${collectionName | graphName} does not exist.`);
-    }
-}).body(
+router.post("/generate_embeddings", generateEmbeddings).body(
     joi.object({
         modelName: joi.string().required(),
         modelType: joi.string().required().allow(Object.values(modelTypes)),
