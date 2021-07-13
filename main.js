@@ -6,7 +6,7 @@ const {query, db} = require("@arangodb");
 const graph_module = require("@arangodb/general-graph");
 const queues = require("@arangodb/foxx/queues");
 const joi = require("joi");
-const {modelTypes, metadataCollectionName} = require("./scripts/setup");
+const {modelTypes, metadataCollectionName} = require("./model/model_metadata");
 
 const router = createRouter();
 context.use(router);

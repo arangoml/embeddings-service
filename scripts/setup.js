@@ -1,100 +1,13 @@
-"use strict";
 
 const db = require("@arangodb").db;
-const {context} = require("@arangodb/locals");
+const {modelTypes, metadataCollectionName, modelMetadataSchema} = require("../model/model_metadata");
 
-const METADATA_DOC_COLLECTION = context.collectionName("_model_metadata");
-
-const modelTypes = {
-    WORD_EMBEDDING: "word_embedding_model",
-    GRAPH_MODEL: "graph_embedding_model"
-};
-
-exports.modelTypes = modelTypes;
-exports.metadataCollectionName = METADATA_DOC_COLLECTION;
-
-const modelMetadataSchema = {
-    rule: {
-        "type": "object",
-        "properties": {
-            "model_type": { "enum": [modelTypes.WORD_EMBEDDING, modelTypes.GRAPH_MODEL] },
-            "name": { "type": "string" },
-            "invocation_name": { "type": "string" },
-            "framework": {
-                "type": "object",
-                "properties": {
-                    "name": { "type": "string" },
-                    "version": { "type": "string" }
-                },
-                "required": ["name"]
-            },
-            "website": { "type": "string" },
-            "data": {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "source_id": { "type": "string" },
-                        "domain": { "type": "string" }, // make this an enum? TBD
-                        "website": { "type": "string" },
-                    }
-                }
-            },
-            "metadata": {
-                "type": "object",
-                "properties": {
-                    "emb_dim": { "type": "number" },
-                    "schema": {
-                        "type": "object",
-                        "properties": {
-                            "features": {
-                                "type": "array",
-                                "items": { "type": "string" }
-                            },
-                            "type": { "type": "string" },
-                            "input_shape": {
-                                "type": "array",
-                                "items": { "type": "number" }
-                            }
-                        },
-                    },
-                    "metrics": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "key": { "type": "string" },
-                                "value": { "type": ["number", "string" ]},
-                                "value_type": { "type": "string" }
-                            },
-                            "required": ["key", "value", "value_type"]
-                        }
-                    }
-                },
-                "required": ["emb_dim"]
-            },
-            "train": {
-                "type": "object",
-                "training_params": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {},
-                    }
-                }
-            }
-        },
-        "required": ["model_type", "name", "metadata", "invocation_name", "framework"]
-    },
-    level: "moderate",
-    message: "The model's metadata is invalid"
-};
 
 function createModelMetadataCollection() {
-    if (!db._collection(METADATA_DOC_COLLECTION)) {
-        db._createDocumentCollection(METADATA_DOC_COLLECTION, { "schema": modelMetadataSchema });
+    if (!db._collection(metadataCollectionName)) {
+        db._createDocumentCollection(metadataCollectionName, { "schema": modelMetadataSchema });
     }
-    return db._collection(METADATA_DOC_COLLECTION);
+    return db._collection(metadataCollectionName);
 }
 
 const seedData = [
