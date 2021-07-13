@@ -40,14 +40,6 @@ function generateEmbeddings(req, res) {
     }
 
     const {modelName, modelType, fieldName, graphName, collectionName} = req.body;
-    // First retrieve model metadata from document
-    const modelMetadata = retrieveModel(modelName, modelType)
-
-    if (modelMetadata == null) {
-        sendInvalidInputMessage(res,
-            `Invalid model: ${modelName} of type ${modelType}`);
-        return;
-    }
 
     // Check if the arguments are valid, either for word embeddings or graph embeddings
     if (!checkCollectionIsPresent(collectionName)) {
@@ -59,6 +51,15 @@ function generateEmbeddings(req, res) {
     if (graphName && !checkGraphIsPresent(graphName)) {
         sendInvalidInputMessage(res,
             `Graph named ${graphName} does not exist.`);
+        return;
+    }
+
+    // retrieve model metadata from document
+    const modelMetadata = retrieveModel(modelName, modelType)
+
+    if (modelMetadata == null) {
+        sendInvalidInputMessage(res,
+            `Invalid model: ${modelName} of type ${modelType}`);
         return;
     }
 
