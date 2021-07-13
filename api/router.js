@@ -17,8 +17,7 @@ function initRouter() {
     const router = createRouter();
 
     router.post("/generate_embeddings", (req, res) => {
-        const paramsValid = initialValidationGenerateEmbParams(req, res);
-        if (!paramsValid) {
+        if (!initialValidationGenerateEmbParams(req, res)) {
             return;
         }
 
@@ -48,13 +47,13 @@ function initRouter() {
                 }
             } else {
                 sendInvalidInputMessage(res,
-                    `Collection named ${colName} does not exist.`);
+                    `Collection named ${collectionName} does not exist.`);
             }
         } else if (checkCollectionIsPresent(collectionName)) {
             generateBatchesCollection(res, collectionName, fieldName, modelMetadata);
         } else {
             sendInvalidInputMessage(res,
-                `Graph or collection named ${colName | graphName} does not exist.`);
+                `Graph or collection named ${collectionName | graphName} does not exist.`);
         }
     }).body(
         joi.object({
