@@ -1,3 +1,5 @@
+"use strict";
+
 const {db} = require("@arangodb");
 const graph_module = require("@arangodb/general-graph");
 const {generateBatchesForModel} = require("../services/embeddings_service");

@@ -1,4 +1,5 @@
 "use strict";
+
 const {context} = require("@arangodb/locals");
 
 const METADATA_DOC_COLLECTION = context.collectionName("_model_metadata");

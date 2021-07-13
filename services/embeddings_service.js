@@ -1,3 +1,5 @@
+"use strict";
+
 const {context} = require("@arangodb/locals");
 const queues = require("@arangodb/foxx/queues");
 const {modelTypes} = require("../model/model_metadata");

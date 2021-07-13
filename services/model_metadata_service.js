@@ -1,3 +1,5 @@
+"use strict";
+
 const {query, db} = require("@arangodb");
 const {metadataCollectionName} = require("../model/model_metadata");
 
