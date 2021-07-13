@@ -3,7 +3,7 @@ const graph_module = require("@arangodb/general-graph");
 const {modelTypes} = require("../model/model_metadata");
 const {sendInvalidInputMessage} = require("../utils/invalid_input");
 const {retrieveModel} = require("../services/model_metadata");
-const {generateBatchesCollection, generateBatchesGraph} = require("./dispatcher");
+const {generateBatchesCollection, generateBatchesGraph} = require("../api/dispatcher");
 
 function initialValidationGenerateEmbParams(req, res) {
     // check if model type is valid
