@@ -4,6 +4,8 @@
   },
   "main": "main.js",
   "scripts": {
-    "setup": "scripts/setup.js"
+    "setup": "scripts/setup.js",
+    "createNodeEmbeddings": "scripts/create_node_embeddings.js",
+    "createGraphEmbeddings": "scripts/create_graph_embeddings.js"
   }
 }
