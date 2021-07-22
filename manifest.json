@@ -1,8 +1,16 @@
 {
+  "$schema": "http://json.schemastore.org/foxx-manifest",
   "engines": {
     "arangodb": "^3.0.0"
   },
   "main": "main.js",
+  "configuration": {
+    "embeddingService": {
+      "type": "string",
+      "default": "http://localhost:8000",
+      "description": "URL of the embeddings service"
+    }
+  },
   "scripts": {
     "setup": "scripts/setup.js",
     "createNodeEmbeddings": "scripts/create_node_embeddings.js",
