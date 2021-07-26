@@ -6,6 +6,7 @@ const {context} = require("@arangodb/locals");
 const {argv} = module.context;
 
 const {batchIndex, batchSize, collectionName, modelMetadata, fieldName, destinationCollection, separateCollection } = argv[0];
+const MAX_RETRIES = 5;
 
 function getDocumentsToEmbed(nDocs, startInd, collection, fieldToEmbed) {
     const start_index = startInd * nDocs;
@@ -37,10 +38,21 @@ function formatBatch(batchData) {
 
 function invokeEmbeddingModel(dataToEmbed) {
     const embeddingsServiceUrl = `${context.configuration.embeddingService}/v2/models/${modelMetadata.invocation_name}/infer`;
-    const res = request.post(embeddingsServiceUrl, {
-        body: formatBatch(dataToEmbed),
-        json: true
-    });
+    let tries = 0;
+    let res = {"status": -1};
+
+    while (res.status != 200 && tries < MAX_RETRIES) {
+        const now = new Date().getTime();
+        while (new Date().getTime() < now + tries) {
+            // NOP
+        }
+
+        res = request.post(embeddingsServiceUrl, {
+            body: formatBatch(dataToEmbed),
+            json: true
+        });
+        tries++;
+    }
     return res;
 }
 
