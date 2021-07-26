@@ -1,6 +1,7 @@
 "use strict";
 const {query, db} = require("@arangodb");
 const request = require("@arangodb/request");
+const {getEmbeddingsFieldName} = require("../services/emb_collections_service");
 const {context} = require("@arangodb/locals");
 
 const {argv} = module.context;
@@ -70,12 +71,12 @@ function extractEmbeddingsFromResponse(response_json, embedding_dim) {
     return chunkArray(giant_arr, embedding_dim);
 }
 
-function insertEmbeddingsIntoDBSameCollection(docsWithKey, calculatedEmbeddings, collection, modelMetadata) {
+function insertEmbeddingsIntoDBSameCollection(docsWithKey, calculatedEmbeddings, fieldName, collection, modelMetadata) {
     const docs = docsWithKey.map((x, i) => {
         return { "_key": x["_key"], "embedding": calculatedEmbeddings[i] };
     });
 
-    const embedding_field_name = `emb_${modelMetadata.name}`
+    const embedding_field_name = getEmbeddingsFieldName(fieldName, modelMetadata);
 
     query`
     FOR doc in ${docs}
@@ -87,12 +88,12 @@ function insertEmbeddingsIntoDBSameCollection(docsWithKey, calculatedEmbeddings,
     `
 }
 
-function insertEmbeddingsIntoDBSepCollection(docsWithKey, calculatedEmbeddings, dCollection, modelMetadata) {
+function insertEmbeddingsIntoDBSepCollection(docsWithKey, calculatedEmbeddings, fieldName, dCollection, modelMetadata) {
     const docs = docsWithKey.map((x, i) => {
         return { "_key": x["_key"], "embedding": calculatedEmbeddings[i], "emb_key": `emb_${x["_key"]}`};
     });
 
-    const embedding_field_name = `emb_${modelMetadata.name}`;
+    const embedding_field_name = getEmbeddingsFieldName(fieldName, modelMetadata);
 
     query`
     FOR doc in ${docs}
@@ -115,9 +116,9 @@ if (res.status == 200) {
     const embeddings = extractEmbeddingsFromResponse(res.body, modelMetadata.metadata.emb_dim);
     if (separateCollection) {
         const dCollection = db._collection(destinationCollection);
-        insertEmbeddingsIntoDBSepCollection(toEmbed, embeddings, dCollection, modelMetadata);
+        insertEmbeddingsIntoDBSepCollection(toEmbed, embeddings, fieldName, dCollection, modelMetadata);
     } else {
-        insertEmbeddingsIntoDBSameCollection(toEmbed, embeddings, collection, modelMetadata);
+        insertEmbeddingsIntoDBSameCollection(toEmbed, embeddings, fieldName, collection, modelMetadata);
     }
 } else {
     console.error("Failed to get requested embeddings!!");

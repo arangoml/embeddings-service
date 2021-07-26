@@ -23,4 +23,9 @@ function getDestinationCollectionName(collectionName, separateCollection, modelM
     return colName;
 }
 
+function getEmbeddingsFieldName(fieldName, modelMetadata) {
+    return `emb_${modelMetadata.name}_${fieldName}`;
+}
+
 exports.getDestinationCollectionName = getDestinationCollectionName;
+exports.getEmbeddingsFieldName = getEmbeddingsFieldName;
