@@ -2,6 +2,7 @@
 
 const db = require("@arangodb").db;
 const {modelTypes, metadataCollectionName, modelMetadataSchema} = require("../model/model_metadata");
+const {embeddingsStatusCollectionName, embeddingsStatusSchema}  = require("../model/embeddings_status");
 
 
 function createModelMetadataCollection() {
@@ -9,6 +10,13 @@ function createModelMetadataCollection() {
         db._createDocumentCollection(metadataCollectionName, { "schema": modelMetadataSchema });
     }
     return db._collection(metadataCollectionName);
+}
+
+function createEmbeddingsStatusCollection() {
+    if (!db._collection(embeddingsStatusCollectionName)) {
+        db._createDocumentCollection(embeddingsStatusCollectionName, { "schema": embeddingsStatusSchema });
+    }
+    return db._collection(embeddingsStatusCollectionName);
 }
 
 const seedData = [
@@ -94,3 +102,4 @@ function seedMetadataCol(collection) {
 
 const modelMetadataCol = createModelMetadataCollection();
 seedMetadataCol(modelMetadataCol);
+createEmbeddingsStatusCollection();
