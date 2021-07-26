@@ -40,6 +40,7 @@ const modelMetadataSchema = {
                 "type": "object",
                 "properties": {
                     "emb_dim": { "type": "number" },
+                    "inference_batch_size": { "type": "number" },
                     "schema": {
                         "type": "object",
                         "properties": {
@@ -67,7 +68,7 @@ const modelMetadataSchema = {
                         }
                     }
                 },
-                "required": ["emb_dim"]
+                "required": ["emb_dim", "inference_batch_size"]
             },
             "train": {
                 "type": "object",

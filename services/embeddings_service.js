@@ -5,8 +5,6 @@ const queues = require("@arangodb/foxx/queues");
 const {modelTypes} = require("../model/model_metadata");
 const {query, db} = require("@arangodb");
 
-// TODO: Make this model specific?
-const batch_size = 64;
 const embeddingQueueName = "embeddings_generation";
 
 function queueCollectionBatch(i, batchSize, colName, fieldName, modelMetadata, embeddingsQueue) {
@@ -56,6 +54,7 @@ function generateBatchesCollection(colName, fieldName, modelMetadata) {
     )
     `.toArray();
 
+    const batch_size = modelMetadata.metadata.inference_batch_size;
     const numBatches = Math.ceil(numberOfDocuments / batch_size);
 
     const embQ = queues.create(embeddingQueueName);
@@ -82,6 +81,7 @@ function generateBatchesGraph(graphName, collectionName, fieldName, modelMetadat
     )
     `.toArray();
 
+    const batch_size = modelMetadata.metadata.inference_batch_size;
     const numBatches = Math.ceil(numberOfDocuments / batch_size);
 
     const embQ = queues.create(embeddingQueueName);
@@ -118,5 +118,4 @@ function generateBatchesForModel(graphName, collectionName, fieldName, modelMeta
     }
 }
 
-exports.BATCH_SIZE = batch_size;
 exports.generateBatchesForModel = generateBatchesForModel;

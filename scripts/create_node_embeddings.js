@@ -52,7 +52,7 @@ function chunkArray(array, chunk_size) {
 }
 
 function extractEmbeddingsFromResponse(response_json, embedding_dim) {
-    // TODO: this is brittle, outputs may differ per model
+    // N.B. this is brittle, do output formats differ per model?
     const output = JSON.parse(response_json);
     const giant_arr = output["outputs"][0]["data"];
     return chunkArray(giant_arr, embedding_dim);
@@ -82,5 +82,9 @@ const collection = db._collection(collectionName)
 const toEmbed = getDocumentsToEmbed(batchSize, batchIndex, collection, fieldName);
 const requestData = toEmbed.map(x => x["field"]);
 const res = invokeEmbeddingModel(requestData);
-const embeddings = extractEmbeddingsFromResponse(res.body, modelMetadata.metadata.emb_dim);
-insertEmbeddingsIntoDBSameCollection(toEmbed, embeddings, collection, modelMetadata);
+if (res.status == 200) {
+    const embeddings = extractEmbeddingsFromResponse(res.body, modelMetadata.metadata.emb_dim);
+    insertEmbeddingsIntoDBSameCollection(toEmbed, embeddings, collection, modelMetadata);
+} else {
+    console.error("Failed to get requested embeddings!!");
+}
