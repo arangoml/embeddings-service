@@ -2,7 +2,8 @@
 
 const {db} = require("@arangodb");
 const graph_module = require("@arangodb/general-graph");
-const {generateBatchesForModel} = require("../services/embeddings_service");
+const {generateBatchesForModel} = require("../services/emb_generation_service");
+const {getDestinationCollectionName} = require("../services/emb_collections_service");
 const {modelTypes} = require("../model/model_metadata");
 const {sendInvalidInputMessage} = require("../utils/invalid_input");
 const {retrieveModel} = require("../services/model_metadata_service");
@@ -37,7 +38,7 @@ function checkCollectionIsPresent(collectionName) {
 function generateEmbeddings(req, res) {
     initialValidationGenerateEmbParams(req, res);
 
-    const {modelName, modelType, fieldName, graphName, collectionName} = req.body;
+    const {modelName, modelType, fieldName, graphName, collectionName, separateCollection} = req.body;
 
     // Check if the arguments are valid, either for word embeddings or graph embeddings
     if (!checkCollectionIsPresent(collectionName)) {
@@ -51,14 +52,15 @@ function generateEmbeddings(req, res) {
     }
 
     // retrieve model metadata from document
-    const modelMetadata = retrieveModel(modelName, modelType)
+    const modelMetadata = retrieveModel(modelName, modelType);
 
     if (modelMetadata == null) {
         sendInvalidInputMessage(res,
             `Invalid model: ${modelName} of type ${modelType}`);
     }
 
-    const message = generateBatchesForModel(graphName, collectionName, fieldName, modelMetadata);
+    const destinationCollectionName = getDestinationCollectionName(collectionName, separateCollection, modelMetadata);
+    const message = generateBatchesForModel(graphName, collectionName, fieldName, destinationCollectionName, separateCollection, modelMetadata);
     res.json(message);
 }
 

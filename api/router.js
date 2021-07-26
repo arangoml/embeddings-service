@@ -18,7 +18,8 @@ router.post("/generate_embeddings", generateEmbeddings)
             graphName: joi.string(),
             // then pick field
             // (for graph embeddings this is a set of features, for word embeddings this is a text field)
-            fieldName: joi.string().required()
+            fieldName: joi.string().required(),
+            separateCollection: joi.bool().default(true)
         }).required(),
         // This seems to be encased in a "value" object in the swagger doc
         // .example([{
@@ -36,6 +37,8 @@ router.post("/generate_embeddings", generateEmbeddings)
          \`collectionName\`: name of the collection that you want to embed
          \`graphName\`: name of the graph that you want to embed (please note: not required if generating node specific features e.g. word embeddings)
          \`fieldName\`: name of the field to embed. For graph embeddings this is a feature vector, for word embeddings this is a string.
+         \`separateCollection\`: whether or not to store embeddings in a separate collection - \`true\` by default. If set to false, the embeddings
+         \twill be stored on the documents in the specified collection.
          `
     ).response(
         400,

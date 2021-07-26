@@ -7,7 +7,7 @@ const {query, db} = require("@arangodb");
 
 const embeddingQueueName = "embeddings_generation";
 
-function queueCollectionBatch(i, batchSize, colName, fieldName, modelMetadata, embeddingsQueue) {
+function queueCollectionBatch(i, batchSize, colName, fieldName, modelMetadata, embeddingsQueue, destinationCollection, separateCollection) {
     embeddingsQueue.push(
         {
             mount: context.mount,
@@ -18,12 +18,14 @@ function queueCollectionBatch(i, batchSize, colName, fieldName, modelMetadata, e
             batchIndex: i,
             modelMetadata,
             fieldName,
-            batchSize
+            batchSize,
+            destinationCollection,
+            separateCollection
         }
     );
 }
 
-function queueGraphBatch(i, batchSize, colName, graphName, fieldName, modelMetadata, embeddingsQueue) {
+function queueGraphBatch(i, batchSize, colName, graphName, fieldName, modelMetadata, embeddingsQueue, destinationCollection, separateCollection) {
     embeddingsQueue.push(
         {
             mount: context.mount,
@@ -35,7 +37,9 @@ function queueGraphBatch(i, batchSize, colName, graphName, fieldName, modelMetad
             graphName,
             modelMetadata,
             fieldName,
-            batchSize
+            batchSize,
+            destinationCollection,
+            separateCollection
         }
     );
 }
@@ -44,7 +48,7 @@ function queueGraphBatch(i, batchSize, colName, graphName, fieldName, modelMetad
  * Queue batch jobs to generate embeddings for a specified collection.
  * Returns true if batch jobs have been queued. This does NOT mean that they've succeeded yet.
  */
-function generateBatchesCollection(colName, fieldName, modelMetadata) {
+function generateBatchesCollection(colName, fieldName, destinationCollection, separateCollection, modelMetadata) {
     const myCol = db._collection(colName);
     const numberOfDocuments = query`
     RETURN COUNT(
@@ -62,7 +66,9 @@ function generateBatchesCollection(colName, fieldName, modelMetadata) {
     Array(numBatches)
         .fill()
         .map((_, i) => i)
-        .forEach(i => queueCollectionBatch(i, batch_size, colName, fieldName, modelMetadata, embQ));
+        .forEach(i => queueCollectionBatch(
+            i, batch_size, colName, fieldName, modelMetadata, embQ, destinationCollection, separateCollection
+        ));
 
     return true;
 }
@@ -71,7 +77,7 @@ function generateBatchesCollection(colName, fieldName, modelMetadata) {
  * Queue batch jobs to generate embeddings for a specified graph.
  * Returns true if batch jobs have been queued. This does NOT mean that they've succeeded yet.
  */
-function generateBatchesGraph(graphName, collectionName, fieldName, modelMetadata) {
+function generateBatchesGraph(graphName, collectionName, fieldName, destinationCollection, separateCollection, modelMetadata) {
     const myCol = db._collection(collectionName);
     const numberOfDocuments = query`
     RETURN COUNT(
@@ -89,15 +95,17 @@ function generateBatchesGraph(graphName, collectionName, fieldName, modelMetadat
     Array(numBatches)
         .fill()
         .map((_, i) => i)
-        .forEach(i => queueGraphBatch(i, batch_size, collectionName, graphName, fieldName, modelMetadata, embQ));
+        .forEach(i => queueGraphBatch(
+            i, batch_size, collectionName, graphName, fieldName, modelMetadata, embQ, destinationCollection, separateCollection
+        ));
 
     return true;
 }
 
-function generateBatchesForModel(graphName, collectionName, fieldName, modelMetadata) {
+function generateBatchesForModel(graphName, collectionName, fieldName, destinationCollection, separateCollection, modelMetadata) {
     switch (modelMetadata.model_type) {
         case modelTypes.WORD_EMBEDDING: {
-            const isQueued = generateBatchesCollection(collectionName, fieldName, modelMetadata);
+            const isQueued = generateBatchesCollection(collectionName, fieldName, destinationCollection, separateCollection, modelMetadata);
             if (isQueued) {
                 return `Queued generation of embeddings for collection ${collectionName} using ${modelMetadata.name} on the ${fieldName} field`;
             }
@@ -107,7 +115,7 @@ function generateBatchesForModel(graphName, collectionName, fieldName, modelMeta
             if (!graphName) {
                 throw new Error("Requested to generate graph embeddings but no graph is provided");
             }
-            const isQueued = generateBatchesGraph(graphName, collectionName, fieldName, modelMetadata);
+            const isQueued = generateBatchesGraph(graphName, collectionName, fieldName, destinationCollection, separateCollection, modelMetadata);
             if (isQueued) {
                 return `Queued generation of embeddings for collection ${collectionName} traversing ${graphName} using ${modelMetadata.name} on the ${fieldName} field`;
             }

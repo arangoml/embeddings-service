@@ -5,7 +5,7 @@ const {context} = require("@arangodb/locals");
 
 const {argv} = module.context;
 
-const {batchIndex, batchSize, collectionName, modelMetadata, fieldName} = argv[0];
+const {batchIndex, batchSize, collectionName, modelMetadata, fieldName, destinationCollection, separateCollection } = argv[0];
 
 function getDocumentsToEmbed(nDocs, startInd, collection, fieldToEmbed) {
     const start_index = startInd * nDocs;
@@ -75,6 +75,22 @@ function insertEmbeddingsIntoDBSameCollection(docsWithKey, calculatedEmbeddings,
     `
 }
 
+function insertEmbeddingsIntoDBSepCollection(docsWithKey, calculatedEmbeddings, dCollection, modelMetadata) {
+    const docs = docsWithKey.map((x, i) => {
+        return { "_key": x["_key"], "embedding": calculatedEmbeddings[i], "emb_key": `emb_${x["_key"]}`};
+    });
+
+    const embedding_field_name = `emb_${modelMetadata.name}`;
+
+    query`
+    FOR doc in ${docs}
+      INSERT {
+        _key: doc["emb_key"],
+        doc_key: doc["_key"],
+        ${embedding_field_name}: doc["embedding"]
+      } IN ${dCollection}
+    `;
+}
 
 // Actual processing done here
 console.log(`Create embeddings for batch ${batchIndex} of size ${batchSize} in collection ${collectionName} using ${modelMetadata.name} on the ${fieldName} field`);
@@ -82,9 +98,15 @@ const collection = db._collection(collectionName)
 const toEmbed = getDocumentsToEmbed(batchSize, batchIndex, collection, fieldName);
 const requestData = toEmbed.map(x => x["field"]);
 const res = invokeEmbeddingModel(requestData);
+
 if (res.status == 200) {
     const embeddings = extractEmbeddingsFromResponse(res.body, modelMetadata.metadata.emb_dim);
-    insertEmbeddingsIntoDBSameCollection(toEmbed, embeddings, collection, modelMetadata);
+    if (separateCollection) {
+        const dCollection = db._collection(destinationCollection);
+        insertEmbeddingsIntoDBSepCollection(toEmbed, embeddings, dCollection, modelMetadata);
+    } else {
+        insertEmbeddingsIntoDBSameCollection(toEmbed, embeddings, collection, modelMetadata);
+    }
 } else {
     console.error("Failed to get requested embeddings!!");
 }
