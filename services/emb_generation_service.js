@@ -7,7 +7,7 @@ const {query, db} = require("@arangodb");
 
 const embeddingQueueName = "embeddings_generation";
 
-function queueCollectionBatch(i, batchSize, colName, fieldName, modelMetadata, embeddingsQueue, destinationCollection, separateCollection) {
+function queueCollectionBatch(i, batchSize, colName, fieldName, modelMetadata, embeddingsQueue, destinationCollection, separateCollection, isLastBatch) {
     embeddingsQueue.push(
         {
             mount: context.mount,
@@ -20,7 +20,8 @@ function queueCollectionBatch(i, batchSize, colName, fieldName, modelMetadata, e
             fieldName,
             batchSize,
             destinationCollection,
-            separateCollection
+            separateCollection,
+            isLastBatch
         }
     );
 }
@@ -67,7 +68,7 @@ function generateBatchesCollection(colName, fieldName, destinationCollection, se
         .fill()
         .map((_, i) => i)
         .forEach(i => queueCollectionBatch(
-            i, batch_size, colName, fieldName, modelMetadata, embQ, destinationCollection, separateCollection
+            i, batch_size, colName, fieldName, modelMetadata, embQ, destinationCollection, separateCollection, i == (batch_size - 1)
         ));
 
     return true;

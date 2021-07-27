@@ -2,11 +2,13 @@
 const {query, db} = require("@arangodb");
 const request = require("@arangodb/request");
 const {getEmbeddingsFieldName} = require("../services/emb_collections_service");
+const {getEmbeddingsStatus, updateEmbeddingsStatus} = require("../services/emb_status_service");
+const {embeddingsStatus} = require("../model/embeddings_status");
 const {context} = require("@arangodb/locals");
 
 const {argv} = module.context;
 
-const {batchIndex, batchSize, collectionName, modelMetadata, fieldName, destinationCollection, separateCollection } = argv[0];
+const {batchIndex, batchSize, collectionName, modelMetadata, fieldName, destinationCollection, separateCollection, isLastBatch } = argv[0];
 const MAX_RETRIES = 5;
 
 function getDocumentsToEmbed(nDocs, startInd, collection, fieldToEmbed) {
@@ -97,9 +99,15 @@ function insertEmbeddingsIntoDBSepCollection(docsWithKey, calculatedEmbeddings, 
 
     query`
     FOR doc in ${docs}
+      UPSERT { 
+        _key: doc["emb_key"],
+      }
       INSERT {
         _key: doc["emb_key"],
         doc_key: doc["_key"],
+        ${embedding_field_name}: doc["embedding"]
+      }
+      UPDATE {
         ${embedding_field_name}: doc["embedding"]
       } IN ${dCollection}
     `;
@@ -119,6 +127,9 @@ if (res.status == 200) {
         insertEmbeddingsIntoDBSepCollection(toEmbed, embeddings, fieldName, dCollection, modelMetadata);
     } else {
         insertEmbeddingsIntoDBSameCollection(toEmbed, embeddings, fieldName, collection, modelMetadata);
+    }
+    if (isLastBatch) {
+        updateEmbeddingsStatus(embeddingsStatus.COMPLETED, collectionName, destinationCollection, fieldName, modelMetadata);
     }
 } else {
     console.error("Failed to get requested embeddings!!");
