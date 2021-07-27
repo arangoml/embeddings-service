@@ -1,6 +1,6 @@
 "use strict";
 
-const {db} = require("@arangodb");
+const {query, db} = require("@arangodb");
 
 function nameForCollectionAndModel(collectionName, modelName) {
     return `emb_${collectionName}_${modelName}`;
@@ -27,5 +27,16 @@ function getEmbeddingsFieldName(fieldName, modelMetadata) {
     return `emb_${modelMetadata.name}_${fieldName}`;
 }
 
+function deleteEmbeddingsFieldEntries(destinationCollectionName, sourceFieldName, modelMetadata) {
+    const dCol = db._collection(destinationCollectionName);
+    const embedding_field_name = getEmbeddingsFieldName(sourceFieldName, modelMetadata);
+    query`
+    FOR doc in ${dCol}
+      FILTER doc[${embedding_field_name}] != null
+      UPDATE doc WITH { ${embedding_field_name}: null } IN ${dCol} OPTIONS { keepNull: false }
+    `;
+}
+
 exports.getDestinationCollectionName = getDestinationCollectionName;
 exports.getEmbeddingsFieldName = getEmbeddingsFieldName;
+exports.deleteEmbeddingsFieldEntries = deleteEmbeddingsFieldEntries;

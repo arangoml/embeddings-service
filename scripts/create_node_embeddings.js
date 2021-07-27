@@ -1,7 +1,7 @@
 "use strict";
 const {query, db} = require("@arangodb");
 const request = require("@arangodb/request");
-const {getEmbeddingsFieldName} = require("../services/emb_collections_service");
+const {getEmbeddingsFieldName, deleteEmbeddingsFieldEntries} = require("../services/emb_collections_service");
 const {getEmbeddingsStatus, updateEmbeddingsStatus} = require("../services/emb_status_service");
 const {embeddingsStatus} = require("../model/embeddings_status");
 const {context} = require("@arangodb/locals");
@@ -116,15 +116,7 @@ function insertEmbeddingsIntoDBSepCollection(docsWithKey, calculatedEmbeddings, 
 
 function rollbackGeneratedEmbeddings(destinationCollectionName, fieldName, modelMetadata) {
     console.log("Rolling back existing embeddings");
-    const dCol = db._collection(destinationCollectionName);
-
-    const embedding_field_name = getEmbeddingsFieldName(fieldName, modelMetadata);
-
-    query`
-    FOR doc in ${dCol}
-      FILTER doc[${embedding_field_name}] != null
-      UPDATE doc WITH { ${embedding_field_name}: null } IN ${dCol} OPTIONS { keepNull: false }
-    `;
+    deleteEmbeddingsFieldEntries(destinationCollectionName, fieldName, modelMetadata);
 }
 
 function handleFailure(currentBatchFailed, isTheLastBatch, collectionName, destinationCollectionName, fieldName, modelMetadata) {
