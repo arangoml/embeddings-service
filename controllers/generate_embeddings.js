@@ -2,6 +2,7 @@
 
 const {db} = require("@arangodb");
 const graph_module = require("@arangodb/general-graph");
+const {updateEmbeddingsStatus} = require("../services/emb_status_service");
 const {modelTypes} = require("../model/model_metadata");
 const {embeddingsStatus} = require("../model/embeddings_status");
 const {sendInvalidInputMessage} = require("../utils/invalid_input");
@@ -48,7 +49,10 @@ function handleGenerationForModel(embStatus, graphName, collectionName, fieldNam
         case embeddingsStatus.RUNNING_FAILED:
             return "Generation of embeddings is already running!";
         case embeddingsStatus.COMPLETED:
-            return "These embeddings have already been generated!";
+            // Overwrite by default
+            updateEmbeddingsStatus(embStatus.RUNNING, collectionName, destinationCollectionName, fieldName, modelMetadata);
+            return generateBatchesForModel(graphName, collectionName, fieldName, destinationCollectionName, separateCollection, modelMetadata);
+        //     return "These embeddings have already been generated!";
     }
 }
 
