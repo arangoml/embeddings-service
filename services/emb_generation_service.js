@@ -68,7 +68,7 @@ function generateBatchesCollection(colName, fieldName, destinationCollection, se
         .fill()
         .map((_, i) => i)
         .forEach(i => queueCollectionBatch(
-            i, batch_size, colName, fieldName, modelMetadata, embQ, destinationCollection, separateCollection, i == (batch_size - 1)
+            i, batch_size, colName, fieldName, modelMetadata, embQ, destinationCollection, separateCollection, i == (numBatches - 1)
         ));
 
     return true;

@@ -42,11 +42,11 @@ function createEmbeddingsStatus(collectionName, destinationCollectionName, field
 function updateEmbeddingsStatus(newStatus, collectionName, destinationCollectionName, fieldName, modelMetadata) {
     const col = db._collection(embeddingsStatusCollectionName);
     query`
-      FOR d in ${col}
+    FOR d in ${col}
         FILTER d.collection == ${collectionName}
         AND d.destination_collection == ${destinationCollectionName}
         AND d.emb_field_name == ${getEmbeddingsFieldName(fieldName, modelMetadata)}
-        UPDATE { _key: d._key, status: ${newStatus} } IN ${col}
+        UPDATE d._key WITH { status: ${newStatus} } IN ${col}
     `;
 }
 exports.getEmbeddingsStatus = getEmbeddingsStatus;

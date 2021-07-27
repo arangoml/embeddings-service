@@ -99,38 +99,74 @@ function insertEmbeddingsIntoDBSepCollection(docsWithKey, calculatedEmbeddings, 
 
     query`
     FOR doc in ${docs}
-      UPSERT { 
-        _key: doc["emb_key"],
-      }
       INSERT {
         _key: doc["emb_key"],
         doc_key: doc["_key"],
         ${embedding_field_name}: doc["embedding"]
-      }
-      UPDATE {
-        ${embedding_field_name}: doc["embedding"]
       } IN ${dCollection}
     `;
+
+    // query`
+    // FOR doc in ${docs}
+    //   UPSERT {
+    //     _key: doc["emb_key"],
+    //   }
+    //   INSERT {
+    //     _key: doc["emb_key"],
+    //     doc_key: doc["_key"],
+    //     ${embedding_field_name}: doc["embedding"]
+    //   }
+    //   UPDATE {
+    //     ${embedding_field_name}: doc["embedding"]
+    //   } IN ${dCollection}
+    // `;
 }
 
-// Actual processing done here
-console.log(`Create embeddings for batch ${batchIndex} of size ${batchSize} in collection ${collectionName} using ${modelMetadata.name} on the ${fieldName} field`);
-const collection = db._collection(collectionName)
-const toEmbed = getDocumentsToEmbed(batchSize, batchIndex, collection, fieldName);
-const requestData = toEmbed.map(x => x["field"]);
-const res = invokeEmbeddingModel(requestData);
 
-if (res.status == 200) {
-    const embeddings = extractEmbeddingsFromResponse(res.body, modelMetadata.metadata.emb_dim);
-    if (separateCollection) {
-        const dCollection = db._collection(destinationCollection);
-        insertEmbeddingsIntoDBSepCollection(toEmbed, embeddings, fieldName, dCollection, modelMetadata);
-    } else {
-        insertEmbeddingsIntoDBSameCollection(toEmbed, embeddings, fieldName, collection, modelMetadata);
+function rollbackGeneratedEmbeddings() {
+    // TODO: Implement ROLLBACK HERE
+}
+
+function handleFailure(currentBatchFailed, isTheLastBatch, collectionName, destinationCollectionName, fieldName, modelMetadata) {
+    if (currentBatchFailed) {
+        updateEmbeddingsStatus(embeddingsStatus.RUNNING_FAILED, collectionName, destinationCollectionName, fieldName, modelMetadata);
+        rollbackGeneratedEmbeddings();
     }
-    if (isLastBatch) {
-        updateEmbeddingsStatus(embeddingsStatus.COMPLETED, collectionName, destinationCollection, fieldName, modelMetadata);
+
+    if (isTheLastBatch) {
+        updateEmbeddingsStatus(embeddingsStatus.FAILED, collectionName, destinationCollectionName, fieldName, modelMetadata);
     }
+}
+
+if (getEmbeddingsStatus(collectionName, destinationCollection, fieldName, modelMetadata) == embeddingsStatus.RUNNING_FAILED) {
+    console.log(`Generation failed, skipping batch ${batchIndex}`);
+    handleFailure(false, isLastBatch, collectionName, destinationCollection, fieldName, modelMetadata);
 } else {
-    console.error("Failed to get requested embeddings!!");
+    try {
+        // Actual processing done here
+        console.log(`Create embeddings for batch ${batchIndex} of size ${batchSize} in collection ${collectionName} using ${modelMetadata.name} on the ${fieldName} field`);
+        const collection = db._collection(collectionName)
+        const toEmbed = getDocumentsToEmbed(batchSize, batchIndex, collection, fieldName);
+        const requestData = toEmbed.map(x => x["field"]);
+        const res = invokeEmbeddingModel(requestData);
+
+        if (res.status == 200) {
+            const embeddings = extractEmbeddingsFromResponse(res.body, modelMetadata.metadata.emb_dim);
+            if (separateCollection) {
+                const dCollection = db._collection(destinationCollection);
+                insertEmbeddingsIntoDBSepCollection(toEmbed, embeddings, fieldName, dCollection, modelMetadata);
+            } else {
+                insertEmbeddingsIntoDBSameCollection(toEmbed, embeddings, fieldName, collection, modelMetadata);
+            }
+            if (isLastBatch) {
+                updateEmbeddingsStatus(embeddingsStatus.COMPLETED, collectionName, destinationCollection, fieldName, modelMetadata);
+            }
+        } else {
+            console.error("Failed to get requested embeddings!!");
+            handleFailure(true, isLastBatch, collectionName, destinationCollection, fieldName, modelMetadata);
+        }
+    } catch (e) {
+        console.error(`Batch ${batchIndex} failed.`);
+        handleFailure(true, isLastBatch, collectionName, destinationCollection, fieldName, modelMetadata);
+    }
 }

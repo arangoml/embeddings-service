@@ -44,15 +44,16 @@ function handleGenerationForModel(embStatus, graphName, collectionName, fieldNam
             createEmbeddingsStatus(collectionName, destinationCollectionName, fieldName, modelMetadata);
             return generateBatchesForModel(graphName, collectionName, fieldName, destinationCollectionName, separateCollection, modelMetadata);
         case embeddingsStatus.FAILED:
+            updateEmbeddingsStatus(embeddingsStatus.RUNNING, collectionName, destinationCollectionName, fieldName, modelMetadata);
             return generateBatchesForModel(graphName, collectionName, fieldName, destinationCollectionName, separateCollection, modelMetadata);
         case embeddingsStatus.RUNNING:
         case embeddingsStatus.RUNNING_FAILED:
             return "Generation of embeddings is already running!";
         case embeddingsStatus.COMPLETED:
             // Overwrite by default
-            updateEmbeddingsStatus(embStatus.RUNNING, collectionName, destinationCollectionName, fieldName, modelMetadata);
+            updateEmbeddingsStatus(embeddingsStatus.RUNNING, collectionName, destinationCollectionName, fieldName, modelMetadata);
             return generateBatchesForModel(graphName, collectionName, fieldName, destinationCollectionName, separateCollection, modelMetadata);
-        //     return "These embeddings have already been generated!";
+            // return "These embeddings have already been generated!";
     }
 }
 
@@ -82,7 +83,7 @@ function generateEmbeddings(req, res) {
 
     const destinationCollectionName = getDestinationCollectionName(collectionName, separateCollection, modelMetadata);
     const embStatus = getEmbeddingsStatus(collectionName, destinationCollectionName, fieldName, modelMetadata);
-    const message = handleGenerationForModel(embStatus, graphName, collectionName, fieldName, destinationCollectionName, separateCollection, modelMetadata)
+    const message = handleGenerationForModel(embStatus, graphName, collectionName, fieldName, destinationCollectionName, separateCollection, modelMetadata);
     res.json(message);
 }
 
