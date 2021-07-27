@@ -99,38 +99,38 @@ function insertEmbeddingsIntoDBSepCollection(docsWithKey, calculatedEmbeddings, 
 
     query`
     FOR doc in ${docs}
+      UPSERT {
+        _key: doc["emb_key"],
+      }
       INSERT {
         _key: doc["emb_key"],
         doc_key: doc["_key"],
         ${embedding_field_name}: doc["embedding"]
+      }
+      UPDATE {
+        ${embedding_field_name}: doc["embedding"]
       } IN ${dCollection}
     `;
-
-    // query`
-    // FOR doc in ${docs}
-    //   UPSERT {
-    //     _key: doc["emb_key"],
-    //   }
-    //   INSERT {
-    //     _key: doc["emb_key"],
-    //     doc_key: doc["_key"],
-    //     ${embedding_field_name}: doc["embedding"]
-    //   }
-    //   UPDATE {
-    //     ${embedding_field_name}: doc["embedding"]
-    //   } IN ${dCollection}
-    // `;
 }
 
 
-function rollbackGeneratedEmbeddings() {
-    // TODO: Implement ROLLBACK HERE
+function rollbackGeneratedEmbeddings(destinationCollectionName, fieldName, modelMetadata) {
+    console.log("Rolling back existing embeddings");
+    const dCol = db._collection(destinationCollectionName);
+
+    const embedding_field_name = getEmbeddingsFieldName(fieldName, modelMetadata);
+
+    query`
+    FOR doc in ${dCol}
+      FILTER doc[${embedding_field_name}] != null
+      UPDATE doc WITH { ${embedding_field_name}: null } IN ${dCol} OPTIONS { keepNull: false }
+    `;
 }
 
 function handleFailure(currentBatchFailed, isTheLastBatch, collectionName, destinationCollectionName, fieldName, modelMetadata) {
     if (currentBatchFailed) {
         updateEmbeddingsStatus(embeddingsStatus.RUNNING_FAILED, collectionName, destinationCollectionName, fieldName, modelMetadata);
-        rollbackGeneratedEmbeddings();
+        rollbackGeneratedEmbeddings(destinationCollectionName, fieldName, modelMetadata);
     }
 
     if (isTheLastBatch) {
