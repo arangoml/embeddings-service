@@ -38,7 +38,7 @@ function checkCollectionIsPresent(collectionName) {
     return db._collections().map(c => c.name()).some(n => n === collectionName)
 }
 
-function handleGenerationForModel(embStatus, graphName, collectionName, fieldName, destinationCollectionName, separateCollection, modelMetadata) {
+function handleGenerationForModel(embStatus, graphName, collectionName, fieldName, destinationCollectionName, separateCollection, modelMetadata, overwriteExisting) {
     switch (embStatus) {
         case embeddingsStatus.DOES_NOT_EXIST:
             createEmbeddingsStatus(collectionName, destinationCollectionName, fieldName, modelMetadata);
@@ -51,16 +51,18 @@ function handleGenerationForModel(embStatus, graphName, collectionName, fieldNam
             return "Generation of embeddings is already running!";
         case embeddingsStatus.COMPLETED:
             // Overwrite by default
+            if (!overwriteExisting) {
+                return "These embeddings have already been generated!";
+            }
             updateEmbeddingsStatus(embeddingsStatus.RUNNING, collectionName, destinationCollectionName, fieldName, modelMetadata);
             return generateBatchesForModel(graphName, collectionName, fieldName, destinationCollectionName, separateCollection, modelMetadata);
-            // return "These embeddings have already been generated!";
     }
 }
 
 function generateEmbeddings(req, res) {
     initialValidationGenerateEmbParams(req, res);
 
-    const {modelName, modelType, fieldName, graphName, collectionName, separateCollection} = req.body;
+    const {modelName, modelType, fieldName, graphName, collectionName, separateCollection, overwriteExisting} = req.body;
 
     // Check if the arguments are valid, either for word embeddings or graph embeddings
     if (!checkCollectionIsPresent(collectionName)) {
@@ -83,7 +85,7 @@ function generateEmbeddings(req, res) {
 
     const destinationCollectionName = getDestinationCollectionName(collectionName, separateCollection, modelMetadata);
     const embStatus = getEmbeddingsStatus(collectionName, destinationCollectionName, fieldName, modelMetadata);
-    const message = handleGenerationForModel(embStatus, graphName, collectionName, fieldName, destinationCollectionName, separateCollection, modelMetadata);
+    const message = handleGenerationForModel(embStatus, graphName, collectionName, fieldName, destinationCollectionName, separateCollection, modelMetadata, overwriteExisting);
     res.json(message);
 }
 
