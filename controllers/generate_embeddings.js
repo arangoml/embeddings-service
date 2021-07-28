@@ -61,11 +61,12 @@ function handleGenerationForModel(embStatus, graphName, collectionName, fieldNam
         case embeddingsStatus.COMPLETED:
             // Overwrite by default
             if (!overwriteExisting) {
-                return "These embeddings have already been generated!";
-            }
-            updateEmbeddingsStatus(embeddingsStatus.RUNNING, collectionName, destinationCollectionName, fieldName, modelMetadata);
-            if (generateBatchesForModel(graphName, collectionName, fieldName, destinationCollectionName, separateCollection, modelMetadata)) {
-                response_dict["message"] = "Overwriting old embeddings. " + start_msg;
+                response_dict["message"] = "These embeddings have already been generated!";
+            } else {
+                updateEmbeddingsStatus(embeddingsStatus.RUNNING, collectionName, destinationCollectionName, fieldName, modelMetadata);
+                if (generateBatchesForModel(graphName, collectionName, fieldName, destinationCollectionName, separateCollection, modelMetadata)) {
+                    response_dict["message"] = "Overwriting old embeddings. " + start_msg;
+                }
             }
             break;
     }

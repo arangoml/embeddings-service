@@ -4,6 +4,7 @@ const createRouter = require("@arangodb/foxx/router");
 const joi = require("joi");
 const {listModels} = require("../controllers/list_models");
 const {generateEmbeddings} = require("../controllers/generate_embeddings");
+const {embeddingsStatusesForModel, embeddingsStatusById} = require("../controllers/embeddings_status");
 const {modelTypes} = require("../model/model_metadata");
 
 const router = createRouter();
@@ -54,6 +55,41 @@ router.post("/generate_embeddings", generateEmbeddings)
         joi.object({
             message: joi.string(),
             embeddings_status_id: joi.string()
+        })
+    );
+
+router.get("/embeddings_status/:statusId", embeddingsStatusById)
+    .pathParam("statusId", joi.string().required(), "ID of embeddings generation status")
+    .response(
+        404,
+        joi.string(),
+        "Not found"
+    )
+    .response(200,
+        joi.object({
+            status: joi.string(),
+            documentCollection: joi.string(),
+            embeddingsCollection: joi.string(),
+            embeddingsFieldName: joi.string()
+        })
+    );
+
+router.get("/embeddings_status", embeddingsStatusesForModel)
+    .queryParam("modelName", joi.string().required())
+    .queryParam("modelType", joi.string().required())
+    .queryParam("collectionName", joi.string().required())
+    .queryParam("fieldName", joi.string().required())
+    .response(
+        404,
+        joi.string(),
+        "Not found"
+    )
+    .response(200,
+        joi.object({
+            status: joi.string(),
+            documentCollection: joi.string(),
+            embeddingsCollection: joi.string(),
+            embeddingsFieldName: joi.string()
         })
     );
 
