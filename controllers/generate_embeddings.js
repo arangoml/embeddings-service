@@ -7,7 +7,7 @@ const {modelTypes} = require("../model/model_metadata");
 const {embeddingsStatus} = require("../model/embeddings_status");
 const {sendInvalidInputMessage} = require("../utils/invalid_input");
 const {retrieveModel} = require("../services/model_metadata_service");
-const {getEmbeddingsStatus, createEmbeddingsStatus} = require("../services/emb_status_service");
+const {getEmbeddingsStatus, createEmbeddingsStatus, getEmbeddingsStatusDocId} = require("../services/emb_status_service");
 const {generateBatchesForModel} = require("../services/emb_generation_service");
 const {getDestinationCollectionName} = require("../services/emb_collections_service");
 
@@ -39,24 +39,38 @@ function checkCollectionIsPresent(collectionName) {
 }
 
 function handleGenerationForModel(embStatus, graphName, collectionName, fieldName, destinationCollectionName, separateCollection, modelMetadata, overwriteExisting) {
+    let response_dict = {};
+    const start_msg = "Queued generation of embeddings!";
     switch (embStatus) {
         case embeddingsStatus.DOES_NOT_EXIST:
             createEmbeddingsStatus(collectionName, destinationCollectionName, fieldName, modelMetadata);
-            return generateBatchesForModel(graphName, collectionName, fieldName, destinationCollectionName, separateCollection, modelMetadata);
+            if (generateBatchesForModel(graphName, collectionName, fieldName, destinationCollectionName, separateCollection, modelMetadata)) {
+                response_dict["message"] = start_msg;
+            }
+            break;
         case embeddingsStatus.FAILED:
             updateEmbeddingsStatus(embeddingsStatus.RUNNING, collectionName, destinationCollectionName, fieldName, modelMetadata);
-            return generateBatchesForModel(graphName, collectionName, fieldName, destinationCollectionName, separateCollection, modelMetadata);
+            if (generateBatchesForModel(graphName, collectionName, fieldName, destinationCollectionName, separateCollection, modelMetadata)) {
+                response_dict["message"] = start_msg;
+            }
+            break;
         case embeddingsStatus.RUNNING:
         case embeddingsStatus.RUNNING_FAILED:
-            return "Generation of embeddings is already running!";
+            response_dict["message"] = "Generation of embeddings is already running!";
+            break;
         case embeddingsStatus.COMPLETED:
             // Overwrite by default
             if (!overwriteExisting) {
                 return "These embeddings have already been generated!";
             }
             updateEmbeddingsStatus(embeddingsStatus.RUNNING, collectionName, destinationCollectionName, fieldName, modelMetadata);
-            return generateBatchesForModel(graphName, collectionName, fieldName, destinationCollectionName, separateCollection, modelMetadata);
+            if (generateBatchesForModel(graphName, collectionName, fieldName, destinationCollectionName, separateCollection, modelMetadata)) {
+                response_dict["message"] = "Overwriting old embeddings. " + start_msg;
+            }
+            break;
     }
+    response_dict["embeddings_status_id"] = getEmbeddingsStatusDocId(collectionName, destinationCollectionName, fieldName, modelMetadata);
+    return response_dict;
 }
 
 function generateEmbeddings(req, res) {
@@ -85,8 +99,8 @@ function generateEmbeddings(req, res) {
 
     const destinationCollectionName = getDestinationCollectionName(collectionName, separateCollection, modelMetadata);
     const embStatus = getEmbeddingsStatus(collectionName, destinationCollectionName, fieldName, modelMetadata);
-    const message = handleGenerationForModel(embStatus, graphName, collectionName, fieldName, destinationCollectionName, separateCollection, modelMetadata, overwriteExisting);
-    res.json(message);
+    const response_dict = handleGenerationForModel(embStatus, graphName, collectionName, fieldName, destinationCollectionName, separateCollection, modelMetadata, overwriteExisting);
+    res.json(response_dict);
 }
 
 exports.generateEmbeddings = generateEmbeddings;

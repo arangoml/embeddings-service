@@ -50,7 +50,12 @@ router.post("/generate_embeddings", generateEmbeddings)
         422,
         joi.string(),
         "Invalid input"
-    ).response(200, joi.string());
+    ).response(200,
+        joi.object({
+            message: joi.string(),
+            embeddings_status_id: joi.string()
+        })
+    );
 
 router.get("/models", listModels)
     .response(
