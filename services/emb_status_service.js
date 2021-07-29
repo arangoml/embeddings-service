@@ -2,9 +2,8 @@
 const {updateStatusByCollectionDestinationAndEmbName} = require("../db/embeddings_status");
 const {createStatus} = require("../db/embeddings_status");
 const {getStatusesByCollectionDestinationAndEmbName} = require("../db/embeddings_status");
-const {query, db} = require("@arangodb");
 const {getEmbeddingsFieldName} = require("./emb_collections_service");
-const {embeddingsStatusCollectionName, embeddingsStatus} = require("../model/embeddings_status");
+const {embeddingsStatus} = require("../model/embeddings_status");
 
 /**
  * Get the status of how the embeddings generation is going.

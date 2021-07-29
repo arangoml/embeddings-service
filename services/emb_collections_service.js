@@ -2,7 +2,7 @@
 
 const {query, db} = require("@arangodb");
 
-function nameForCollectionAndModel(collectionName, modelName) {
+function colNameForCollectionAndModel(collectionName, modelName) {
     return `emb_${collectionName}_${modelName}`;
 }
 
@@ -12,7 +12,7 @@ function getDestinationCollectionName(collectionName, separateCollection, modelM
         return collectionName;
     }
     // Otherwise create the separate collection name
-    const colName = nameForCollectionAndModel(collectionName, modelMetadata.name);
+    const colName = colNameForCollectionAndModel(collectionName, modelMetadata.name);
 
     // And create it if it doesn't already exist
     if (!db._collection(colName)) {
