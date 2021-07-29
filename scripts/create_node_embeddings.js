@@ -14,7 +14,7 @@ const MAX_RETRIES = 5;
 function getDocumentsToEmbed(nDocs, startInd, collection, fieldToEmbed) {
     const start_index = startInd * nDocs;
 
-    const toEmbed = query`
+    return query`
     FOR doc in ${collection}
         FILTER doc.${fieldToEmbed} != null
         LIMIT ${start_index}, ${nDocs}
@@ -23,7 +23,6 @@ function getDocumentsToEmbed(nDocs, startInd, collection, fieldToEmbed) {
           "field": doc.${fieldToEmbed}
         }
     `.toArray();
-    return toEmbed;
 }
 
 function formatBatch(batchData) {
@@ -44,7 +43,7 @@ function invokeEmbeddingModel(dataToEmbed) {
     let tries = 0;
     let res = {"status": -1};
 
-    while (res.status != 200 && tries < MAX_RETRIES) {
+    while (res.status !== 200 && tries < MAX_RETRIES) {
         const now = new Date().getTime();
         while (new Date().getTime() < now + tries) {
             // NOP
@@ -130,7 +129,7 @@ function handleFailure(currentBatchFailed, isTheLastBatch, collectionName, desti
     }
 }
 
-if (getEmbeddingsStatus(collectionName, destinationCollection, fieldName, modelMetadata) == embeddingsStatus.RUNNING_FAILED) {
+if (getEmbeddingsStatus(collectionName, destinationCollection, fieldName, modelMetadata) === embeddingsStatus.RUNNING_FAILED) {
     console.log(`Generation failed, skipping batch ${batchIndex}`);
     handleFailure(false, isLastBatch, collectionName, destinationCollection, fieldName, modelMetadata);
 } else {
@@ -142,7 +141,7 @@ if (getEmbeddingsStatus(collectionName, destinationCollection, fieldName, modelM
         const requestData = toEmbed.map(x => x["field"]);
         const res = invokeEmbeddingModel(requestData);
 
-        if (res.status == 200) {
+        if (res.status === 200) {
             const embeddings = extractEmbeddingsFromResponse(res.body, modelMetadata.metadata.emb_dim);
             if (separateCollection) {
                 const dCollection = db._collection(destinationCollection);

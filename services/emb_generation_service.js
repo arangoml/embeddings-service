@@ -21,13 +21,13 @@ function queueBatch(scriptName, i, batchSize, graphName, colName, fieldName, mod
         {
             collectionName: colName,
             batchIndex: i,
-            modelMetadata,
-            graphName,
-            fieldName,
-            batchSize,
-            destinationCollection,
-            separateCollection,
-            isLastBatch
+            modelMetadata: modelMetadata,
+            graphName: graphName,
+            fieldName: fieldName,
+            batchSize: batchSize,
+            destinationCollection: destinationCollection,
+            separateCollection: separateCollection,
+            isLastBatch: isLastBatch
         }
     );
 }
@@ -58,8 +58,8 @@ function generateBatches(scriptType, graphName, collectionName, fieldName, desti
             scriptType,
             i,
             batch_size,
-            collectionName,
             graphName,
+            collectionName,
             fieldName,
             modelMetadata,
             embQ,
@@ -85,7 +85,6 @@ function generateBatchesForModel(graphName, collectionName, fieldName, destinati
         default:
             throw new Error(`Error: unrecognized model type: ${modelMetadata.model_type}`);
     }
-    throw new Error("Unable to queue batches.");
 }
 
 exports.generateBatchesForModel = generateBatchesForModel;

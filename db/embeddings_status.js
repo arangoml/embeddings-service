@@ -12,7 +12,7 @@ function getStatusByKey(key) {
         FILTER d._key == ${key}
         RETURN d
     `.toArray();
-    if (statuses.length == 0) {
+    if (statuses.length === 0) {
         return null;
     }
     return statuses[0];
@@ -20,25 +20,23 @@ function getStatusByKey(key) {
 
 function getStatusesByCollectionAndEmbName(collectionName, embeddingsFieldName) {
     const col = db._collection(embeddingsStatusCollectionName);
-    const statuses = query`
+    return query`
     FOR d in ${col}
         FILTER d.collection == ${collectionName}
         AND d.emb_field_name == ${embeddingsFieldName}
         RETURN d
     `.toArray();
-    return statuses;
 }
 
 function getStatusesByCollectionDestinationAndEmbName(collectionName, destinationCollectionName, embeddingsFieldName) {
     const col = db._collection(embeddingsStatusCollectionName);
-    const res = query`
+    return query`
     FOR d in ${col}
         FILTER d.collection == ${collectionName}
         AND d.destination_collection == ${destinationCollectionName}
         AND d.emb_field_name == ${embeddingsFieldName}
         RETURN d
     `.toArray();
-    return res;
 }
 
 function createStatus(collectionName, destinationCollectionName, embeddingsFieldName, status) {

@@ -1,3 +1,4 @@
+"use strict";
 const {getStatusByKey} = require("../db/embeddings_status");
 const {getStatusesByCollectionAndEmbName} = require("../db/embeddings_status");
 const {retrieveModel} = require("../services/model_metadata_service");
@@ -18,7 +19,7 @@ function embeddingsStatusesForModel(req, res) {
         getEmbeddingsFieldName(fieldName, modelMetadata)
     );
 
-    if (statuses.length == 0) {
+    if (statuses.length === 0) {
         res.throw(404, "Status not found");
     }
     res.json(statuses);

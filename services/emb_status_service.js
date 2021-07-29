@@ -10,7 +10,7 @@ const {embeddingsStatus} = require("../model/embeddings_status");
  */
 function getEmbeddingsStatus(collectionName, destinationCollectionName, fieldName, modelMetadata) {
     const res = getStatusesByCollectionDestinationAndEmbName(collectionName, destinationCollectionName, getEmbeddingsFieldName(fieldName, modelMetadata))
-    if (res.length == 0) {
+    if (res.length === 0) {
         return embeddingsStatus.DOES_NOT_EXIST;
     }
     return res[0]["status"];
@@ -21,7 +21,7 @@ function getEmbeddingsStatus(collectionName, destinationCollectionName, fieldNam
  */
 function getEmbeddingsStatusDocId(collectionName, destinationCollectionName, fieldName, modelMetadata) {
     const res = getStatusesByCollectionDestinationAndEmbName(collectionName, destinationCollectionName, getEmbeddingsFieldName(fieldName, modelMetadata))
-    if (res.length == 0) {
+    if (res.length === 0) {
         return null;
     }
     return res[0]["_key"];
