@@ -1,7 +1,6 @@
 "use strict";
 
-const {db} = require("@arangodb");
-const graph_module = require("@arangodb/general-graph");
+const {checkCollectionIsPresent, checkGraphIsPresent} = require("../utils/db");
 const {updateEmbeddingsStatus} = require("../services/emb_status_service");
 const {modelTypes} = require("../model/model_metadata");
 const {embeddingsStatus} = require("../model/embeddings_status");
@@ -30,13 +29,6 @@ function initialValidationGenerateEmbParams(req, res) {
     }
 }
 
-function checkGraphIsPresent(graphName) {
-    return graph_module._list().some(g => g === graphName)
-}
-
-function checkCollectionIsPresent(collectionName) {
-    return db._collections().map(c => c.name()).some(n => n === collectionName)
-}
 
 function handleGenerationForModel(embStatus, graphName, collectionName, fieldName, destinationCollectionName, separateCollection, modelMetadata, overwriteExisting) {
     let response_dict = {};
