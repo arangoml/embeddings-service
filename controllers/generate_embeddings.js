@@ -48,7 +48,14 @@ function handleGenerationForModel(embStatus, graphName, collectionName, fieldNam
             break;
         case embeddingsStatus.RUNNING:
         case embeddingsStatus.RUNNING_FAILED:
-            response_dict["message"] = "Generation of embeddings is already running!";
+            if (overwriteExisting) {
+                updateEmbeddingsStatus(embeddingsStatus.RUNNING, collectionName, destinationCollectionName, fieldName, modelMetadata);
+                if (generateBatchesForModel(graphName, collectionName, fieldName, destinationCollectionName, separateCollection, modelMetadata)) {
+                    response_dict["message"] = "Overwriting old embeddings. " + start_msg;
+                }
+            } else {
+                response_dict["message"] = "Generation of embeddings is already running!";
+            }
             break;
         case embeddingsStatus.COMPLETED:
             // Overwrite by default
