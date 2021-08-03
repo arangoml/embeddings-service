@@ -121,7 +121,8 @@ function rollbackGeneratedEmbeddings(destinationCollectionName, fieldName, model
 function handleFailure(currentBatchFailed, isTheLastBatch, collectionName, destinationCollectionName, fieldName, modelMetadata) {
     if (currentBatchFailed) {
         updateEmbeddingsStatus(embeddingsStatus.RUNNING_FAILED, collectionName, destinationCollectionName, fieldName, modelMetadata);
-        rollbackGeneratedEmbeddings(destinationCollectionName, fieldName, modelMetadata);
+        // Disabled to enable partial loads
+        // rollbackGeneratedEmbeddings(destinationCollectionName, fieldName, modelMetadata);
     }
 
     if (isTheLastBatch) {
