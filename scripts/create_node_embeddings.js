@@ -35,7 +35,7 @@ function formatBatch(batchData) {
                 datatype: "BYTES"
             }
         ]
-    }
+    };
 }
 
 function invokeEmbeddingModel(dataToEmbed) {

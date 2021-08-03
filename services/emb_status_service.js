@@ -35,7 +35,8 @@ function createEmbeddingsStatus(collectionName, destinationCollectionName, field
         collectionName,
         destinationCollectionName,
         getEmbeddingsFieldName(fieldName, modelMetadata),
-        embeddingsStatus.RUNNING
+        embeddingsStatus.RUNNING,
+        new Date().toISOString()
     );
 }
 
@@ -47,7 +48,8 @@ function updateEmbeddingsStatus(newStatus, collectionName, destinationCollection
         collectionName,
         destinationCollectionName,
         getEmbeddingsFieldName(fieldName, modelMetadata),
-        newStatus
+        newStatus,
+        new Date().toISOString()
     );
 }
 
