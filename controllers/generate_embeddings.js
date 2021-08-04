@@ -1,5 +1,7 @@
 "use strict";
 
+const {getCountDocumentsWithoutEmbedding} = require("../services/emb_collections_service");
+const {getEmbeddingsStatusDict} = require("../services/emb_status_service");
 const {checkCollectionIsPresent, checkGraphIsPresent} = require("../utils/db");
 const {updateEmbeddingsStatus} = require("../services/emb_status_service");
 const {modelTypes} = require("../model/model_metadata");
@@ -30,9 +32,12 @@ function initialValidationGenerateEmbParams(req, res) {
 }
 
 
-function handleGenerationForModel(embStatus, graphName, collectionName, fieldName, destinationCollectionName, separateCollection, modelMetadata, overwriteExisting) {
+function handleGenerationForModel(embStatusDict, graphName, collectionName, fieldName, destinationCollectionName, separateCollection, modelMetadata, overwriteExisting) {
+    const embStatus = embStatusDict ? embStatusDict["status"] : embeddingsStatus.DOES_NOT_EXIST;
+
     let response_dict = {};
     const start_msg = "Queued generation of embeddings!";
+
     switch (embStatus) {
         case embeddingsStatus.DOES_NOT_EXIST:
             createEmbeddingsStatus(collectionName, destinationCollectionName, fieldName, modelMetadata);
@@ -58,9 +63,16 @@ function handleGenerationForModel(embStatus, graphName, collectionName, fieldNam
             }
             break;
         case embeddingsStatus.COMPLETED:
-            // Overwrite by default
+            // first check if we have any documents that don't already have an embedding
             if (!overwriteExisting) {
-                response_dict["message"] = "These embeddings have already been generated!";
+                if (getCountDocumentsWithoutEmbedding(embStatusDict, fieldName) !== 0) {
+                    updateEmbeddingsStatus(embeddingsStatus.RUNNING, collectionName, destinationCollectionName, fieldName, modelMetadata);
+                    if (generateBatchesForModel(graphName, collectionName, fieldName, destinationCollectionName, separateCollection, modelMetadata)) {
+                        response_dict["message"] = "Adding new embeddings. " + start_msg;
+                    }
+                } else {
+                    response_dict["message"] = "These embeddings have already been generated!";
+                }
             } else {
                 updateEmbeddingsStatus(embeddingsStatus.RUNNING, collectionName, destinationCollectionName, fieldName, modelMetadata);
                 if (generateBatchesForModel(graphName, collectionName, fieldName, destinationCollectionName, separateCollection, modelMetadata)) {
@@ -98,8 +110,8 @@ function generateEmbeddings(req, res) {
     }
 
     const destinationCollectionName = getDestinationCollectionName(collectionName, separateCollection, modelMetadata);
-    const embStatus = getEmbeddingsStatus(collectionName, destinationCollectionName, fieldName, modelMetadata);
-    const response_dict = handleGenerationForModel(embStatus, graphName, collectionName, fieldName, destinationCollectionName, separateCollection, modelMetadata, overwriteExisting);
+    const embStatusDict = getEmbeddingsStatusDict(collectionName, destinationCollectionName, fieldName, modelMetadata);
+    const response_dict = handleGenerationForModel(embStatusDict, graphName, collectionName, fieldName, destinationCollectionName, separateCollection, modelMetadata, overwriteExisting);
     res.json(response_dict);
 }
 

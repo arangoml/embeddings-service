@@ -37,6 +37,43 @@ function deleteEmbeddingsFieldEntries(destinationCollectionName, sourceFieldName
     `;
 }
 
+function getCountDocumentsSameCollection(embeddingsStatusDict, sourceFieldName) {
+    const dCol = db._collection(embeddingsStatusDict["destination_collection"]);
+    const embedding_field_name = getEmbeddingsFieldName(sourceFieldName, modelMetadata);
+    query`
+        RETURN COUNT(FOR doc in ${dCol}
+          FILTER doc[${sourceFieldName}] != null
+          FILTER doc[${embedding_field_name}] == null
+          FILTER LENGTH(emb_docs) == 0
+          RETURN 1)
+        `.count();
+}
+
+function getCountDocumentsSeparateCollection(embeddingsStatusDict, sourceFieldName) {
+    const dCol = db._collection(embeddingsStatusDict["destination_collection"]);
+    const sCol = db._collection(embeddingsStatusDict["collection"]);
+    return query`
+        RETURN COUNT(FOR doc in ${sCol}
+          FILTER doc[${sourceFieldName}] != null
+          LET emb_docs = (
+              FOR emb_d in ${dCol}
+                FILTER emb_d.doc_key == doc._key
+                RETURN 1
+          )  
+          FILTER LENGTH(emb_docs) == 0
+          RETURN 1)
+        `.toArray()[0];
+}
+
+function getCountDocumentsWithoutEmbedding(embeddingsStatusDict, sourceFieldName) {
+    if (embeddingsStatusDict["destination_collection"] == embeddingsStatusDict["collection"]) {
+        return getCountDocumentsSameCollection(embeddingsStatusDict, sourceFieldName);
+    } else {
+        return getCountDocumentsSeparateCollection(embeddingsStatusDict, sourceFieldName);
+    }
+}
+
 exports.getDestinationCollectionName = getDestinationCollectionName;
 exports.getEmbeddingsFieldName = getEmbeddingsFieldName;
 exports.deleteEmbeddingsFieldEntries = deleteEmbeddingsFieldEntries;
+exports.getCountDocumentsWithoutEmbedding = getCountDocumentsWithoutEmbedding;

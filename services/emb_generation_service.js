@@ -38,6 +38,8 @@ function queueBatch(scriptName, i, batchSize, graphName, colName, fieldName, mod
  */
 function generateBatches(scriptType, graphName, collectionName, fieldName, destinationCollection, separateCollection, modelMetadata) {
     const myCol = db._collection(collectionName);
+    // TODO: Change to handle existing separate collection
+    // if the collection is present, then we need to filter not just on fields but also where there isn't a document
     const numberOfDocuments = query`
     RETURN COUNT(
         FOR doc in ${myCol}
