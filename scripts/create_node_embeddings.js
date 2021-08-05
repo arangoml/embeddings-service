@@ -75,11 +75,11 @@ function extractEmbeddingsFromResponse(response_json, embedding_dim) {
 
 function logTimeElapsed(response_json) {
     const output = JSON.parse(response_json);
-    const time_resp = output["outputs"].find(e => e["name"] === "TIME_ELAPSED");
-    if (time_resp) {
-        const time_elapsed = time_resp["data"];
-        console.log(`Model call on compute node took ${time_elapsed} ms`);
-    }
+    output["outputs"]
+        .filter(e => e["name"].startsWith("TIME"))
+        .forEach(e => {
+            console.log(`Model call ${e["name"]} on compute node took ${e["data"]} ms`);
+        });
 }
 
 function insertEmbeddingsIntoDBSameCollection(docsWithKey, calculatedEmbeddings, fieldName, collection, modelMetadata) {
