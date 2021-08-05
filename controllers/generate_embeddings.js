@@ -9,6 +9,7 @@ const {retrieveModel} = require("../services/model_metadata_service");
 const {getEmbeddingsStatus, createEmbeddingsStatus, getEmbeddingsStatusDocId} = require("../services/emb_status_service");
 const {generateBatchesForModel} = require("../services/emb_generation_service");
 const {getDestinationCollectionName} = require("../services/emb_collections_service");
+const {profileCall} = require("../utils/profiling");
 
 function initialValidationGenerateEmbParams(req, res) {
     // check if model type is valid
@@ -90,9 +91,9 @@ function generateEmbeddings(req, res) {
             `Invalid model: ${modelName} of type ${modelType}`);
     }
 
-    const destinationCollectionName = getDestinationCollectionName(collectionName, separateCollection, modelMetadata);
-    const embStatus = getEmbeddingsStatus(collectionName, destinationCollectionName, fieldName, modelMetadata);
-    const response_dict = handleGenerationForModel(embStatus, graphName, collectionName, fieldName, destinationCollectionName, separateCollection, modelMetadata, overwriteExisting);
+    const destinationCollectionName = profileCall(getDestinationCollectionName)(collectionName, separateCollection, modelMetadata);
+    const embStatus = profileCall(getEmbeddingsStatus)(collectionName, destinationCollectionName, fieldName, modelMetadata);
+    const response_dict = profileCall(handleGenerationForModel)(embStatus, graphName, collectionName, fieldName, destinationCollectionName, separateCollection, modelMetadata, overwriteExisting);
     res.json(response_dict);
 }
 

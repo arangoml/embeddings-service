@@ -1,6 +1,7 @@
 "use strict";
 const {query, db} = require("@arangodb");
 const request = require("@arangodb/request");
+const {profileCall} = require("../utils/profiling");
 const {getEmbeddingsFieldName, deleteEmbeddingsFieldEntries} = require("../services/emb_collections_service");
 const {getEmbeddingsStatus, updateEmbeddingsStatus} = require("../services/emb_status_service");
 const {embeddingsStatus} = require("../model/embeddings_status");
@@ -72,6 +73,15 @@ function extractEmbeddingsFromResponse(response_json, embedding_dim) {
     return chunkArray(giant_arr, embedding_dim);
 }
 
+function logTimeElapsed(response_json) {
+    const output = JSON.parse(response_json);
+    const time_resp = output["outputs"].find(e => e["name"] === "TIME_ELAPSED");
+    if (time_resp) {
+        const time_elapsed = time_resp["data"];
+        console.log(`Model call on compute node took ${time_elapsed} ms`);
+    }
+}
+
 function insertEmbeddingsIntoDBSameCollection(docsWithKey, calculatedEmbeddings, fieldName, collection, modelMetadata) {
     const docs = docsWithKey.map((x, i) => {
         return { "_key": x["_key"], "embedding": calculatedEmbeddings[i] };
@@ -129,35 +139,41 @@ function handleFailure(currentBatchFailed, isTheLastBatch, collectionName, desti
     }
 }
 
-if (getEmbeddingsStatus(collectionName, destinationCollection, fieldName, modelMetadata) === embeddingsStatus.RUNNING_FAILED) {
-    console.log(`Generation failed, skipping batch ${batchIndex}`);
-    handleFailure(false, isLastBatch, collectionName, destinationCollection, fieldName, modelMetadata);
-} else {
-    try {
-        // Actual processing done here
-        console.log(`Create embeddings for batch ${batchIndex} of size ${batchSize} in collection ${collectionName} using ${modelMetadata.name} on the ${fieldName} field`);
-        const collection = db._collection(collectionName)
-        const toEmbed = getDocumentsToEmbed(batchSize, batchIndex, collection, fieldName);
-        const requestData = toEmbed.map(x => x["field"]);
-        const res = invokeEmbeddingModel(requestData);
+function createNodeEmbeddings() {
+    if (profileCall(getEmbeddingsStatus)(collectionName, destinationCollection, fieldName, modelMetadata) === embeddingsStatus.RUNNING_FAILED) {
+        console.log(`Generation failed, skipping batch ${batchIndex}`);
+        handleFailure(false, isLastBatch, collectionName, destinationCollection, fieldName, modelMetadata);
+    } else {
+        try {
+            // Actual processing done here
+            console.log(`Create embeddings for batch ${batchIndex} of size ${batchSize} in collection ${collectionName} using ${modelMetadata.name} on the ${fieldName} field`);
+            const collection = db._collection(collectionName)
+            const toEmbed = profileCall(getDocumentsToEmbed)(batchSize, batchIndex, collection, fieldName);
+            const requestData = toEmbed.map(x => x["field"]);
+            const res = profileCall(invokeEmbeddingModel)(requestData);
 
-        if (res.status === 200) {
-            const embeddings = extractEmbeddingsFromResponse(res.body, modelMetadata.metadata.emb_dim);
-            if (separateCollection) {
-                const dCollection = db._collection(destinationCollection);
-                insertEmbeddingsIntoDBSepCollection(toEmbed, embeddings, fieldName, dCollection, modelMetadata);
+            if (res.status === 200) {
+                logTimeElapsed(res.body);
+                const embeddings = profileCall(extractEmbeddingsFromResponse)(res.body, modelMetadata.metadata.emb_dim);
+                if (separateCollection) {
+                    const dCollection = db._collection(destinationCollection);
+                    profileCall(insertEmbeddingsIntoDBSepCollection)(toEmbed, embeddings, fieldName, dCollection, modelMetadata);
+                } else {
+                    profileCall(insertEmbeddingsIntoDBSameCollection)(toEmbed, embeddings, fieldName, collection, modelMetadata);
+                }
+                if (isLastBatch) {
+                    updateEmbeddingsStatus(embeddingsStatus.COMPLETED, collectionName, destinationCollection, fieldName, modelMetadata);
+                }
             } else {
-                insertEmbeddingsIntoDBSameCollection(toEmbed, embeddings, fieldName, collection, modelMetadata);
+                console.error("Failed to get requested embeddings!!");
+                handleFailure(true, isLastBatch, collectionName, destinationCollection, fieldName, modelMetadata);
             }
-            if (isLastBatch) {
-                updateEmbeddingsStatus(embeddingsStatus.COMPLETED, collectionName, destinationCollection, fieldName, modelMetadata);
-            }
-        } else {
-            console.error("Failed to get requested embeddings!!");
+        } catch (e) {
+            console.error(`Batch ${batchIndex} failed.`);
+            console.error(e);
             handleFailure(true, isLastBatch, collectionName, destinationCollection, fieldName, modelMetadata);
         }
-    } catch (e) {
-        console.error(`Batch ${batchIndex} failed.`);
-        handleFailure(true, isLastBatch, collectionName, destinationCollection, fieldName, modelMetadata);
     }
 }
+
+profileCall(createNodeEmbeddings)();
