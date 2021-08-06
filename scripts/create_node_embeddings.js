@@ -1,14 +1,19 @@
 "use strict";
 const {query, db} = require("@arangodb");
 const request = require("@arangodb/request");
+const {context} = require("@arangodb/locals");
+const queues = require("@arangodb/foxx/queues");
 const {getEmbeddingsFieldName, deleteEmbeddingsFieldEntries} = require("../services/emb_collections_service");
 const {getEmbeddingsStatus, updateEmbeddingsStatus} = require("../services/emb_status_service");
+const {queueBatch, scripts} = require("../services/emb_generation_service");
 const {embeddingsStatus} = require("../model/embeddings_status");
-const {context} = require("@arangodb/locals");
+const {EMB_QUEUE_NAME} = require("../utils/embeddings_queue");
 
 const {argv} = module.context;
 
-const {batchIndex, batchSize, collectionName, modelMetadata, fieldName, destinationCollection, separateCollection, isLastBatch } = argv[0];
+const {batchIndex, batchSize, numberOfBatches, batchOffset, collectionName, modelMetadata, fieldName, destinationCollection, separateCollection } = argv[0];
+const isLastBatch = (batchIndex === (numberOfBatches - 1));
+
 const MAX_RETRIES = 5;
 
 function getDocumentsToEmbed(nDocs, startInd, collection, fieldToEmbed) {
@@ -130,6 +135,7 @@ function handleFailure(currentBatchFailed, isTheLastBatch, collectionName, desti
     }
 }
 
+let newBatchOffset = batchOffset;
 try {
     // Actual processing done here
     console.log(`Create embeddings for batch ${batchIndex} of size ${batchSize} in collection ${collectionName} using ${modelMetadata.name} on the ${fieldName} field`);
@@ -160,4 +166,22 @@ try {
 } catch (e) {
     console.error(`Batch ${batchIndex} failed.`);
     handleFailure(true, isLastBatch, collectionName, destinationCollection, fieldName, modelMetadata);
+}
+
+// No matter what, queue the next batch
+if (!isLastBatch) {
+    const q = queues.get(EMB_QUEUE_NAME);
+    queueBatch(scripts.NODE,
+        batchIndex + 1,
+        batchSize,
+        numberOfBatches,
+        newBatchOffset,
+        null,
+        collectionName,
+        fieldName,
+        modelMetadata,
+        q,
+        destinationCollection,
+        separateCollection
+    );
 }

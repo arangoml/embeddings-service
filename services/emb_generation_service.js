@@ -3,16 +3,17 @@
 const {context} = require("@arangodb/locals");
 const queues = require("@arangodb/foxx/queues");
 const {modelTypes} = require("../model/model_metadata");
+const {EMB_QUEUE_NAME} = require("../utils/embeddings_queue");
 const {query, db} = require("@arangodb");
 
-const embeddingQueueName = "embeddings_generation";
+const embeddingQueueName = EMB_QUEUE_NAME;
 
 const scripts = {
     NODE: "createNodeEmbeddings",
     GRAPH: "createGraphEmbeddings"
 };
 
-function queueBatch(scriptName, i, batchSize, graphName, colName, fieldName, modelMetadata, embeddingsQueue, destinationCollection, separateCollection, isLastBatch) {
+function queueBatch(scriptName, i, batchSize, numBatches, batchOffset, graphName, colName, fieldName, modelMetadata, embeddingsQueue, destinationCollection, separateCollection) {
     embeddingsQueue.push(
         {
             mount: context.mount,
@@ -21,13 +22,14 @@ function queueBatch(scriptName, i, batchSize, graphName, colName, fieldName, mod
         {
             collectionName: colName,
             batchIndex: i,
+            batchSize: batchSize,
+            numberOfBatches: numBatches,
+            batchOffset: batchOffset,
             modelMetadata: modelMetadata,
             graphName: graphName,
             fieldName: fieldName,
-            batchSize: batchSize,
             destinationCollection: destinationCollection,
             separateCollection: separateCollection,
-            isLastBatch: isLastBatch
         }
     );
 }
@@ -53,22 +55,21 @@ function generateBatches(scriptType, graphName, collectionName, fieldName, desti
 
     const embQ = queues.create(embeddingQueueName);
 
-    Array(numBatches)
-        .fill()
-        .map((_, i) => i)
-        .forEach(i => queueBatch(
-            scriptType,
-            i,
-            batch_size,
-            graphName,
-            collectionName,
-            fieldName,
-            modelMetadata,
-            embQ,
-            destinationCollection,
-            separateCollection,
-            i === (numBatches - 1)
-        ));
+    // The queue will be invoked recursively
+    queueBatch(
+        scriptType,
+        0,
+        batch_size,
+        numBatches,
+        0,
+        graphName,
+        collectionName,
+        fieldName,
+        modelMetadata,
+        embQ,
+        destinationCollection,
+        separateCollection
+    );
 }
 
 function generateBatchesForModel(graphName, collectionName, fieldName, destinationCollection, separateCollection, modelMetadata) {
@@ -90,3 +91,5 @@ function generateBatchesForModel(graphName, collectionName, fieldName, destinati
 }
 
 exports.generateBatchesForModel = generateBatchesForModel;
+exports.queueBatch = queueBatch;
+exports.scripts = scripts;
