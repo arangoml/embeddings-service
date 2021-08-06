@@ -2,17 +2,21 @@
 
 const {context} = require("@arangodb/locals");
 const queues = require("@arangodb/foxx/queues");
+const {getEmbeddingsStatusDict} = require("./emb_status_service");
+const {getCountDocumentsWithoutEmbedding} = require("./emb_collections_service");
+const {getEmbeddingsFieldName} = require("./emb_collections_service");
 const {modelTypes} = require("../model/model_metadata");
+const {EMB_QUEUE_NAME} = require("../utils/embeddings_queue");
 const {query, db} = require("@arangodb");
 
-const embeddingQueueName = "embeddings_generation";
+const embeddingQueueName = EMB_QUEUE_NAME;
 
 const scripts = {
     NODE: "createNodeEmbeddings",
     GRAPH: "createGraphEmbeddings"
 };
 
-function queueBatch(scriptName, i, batchSize, graphName, colName, fieldName, modelMetadata, embeddingsQueue, destinationCollection, separateCollection, isLastBatch) {
+function queueBatch(scriptName, i, batchSize, numBatches, batchOffset, graphName, colName, fieldName, modelMetadata, embeddingsQueue, destinationCollection, separateCollection) {
     embeddingsQueue.push(
         {
             mount: context.mount,
@@ -21,13 +25,14 @@ function queueBatch(scriptName, i, batchSize, graphName, colName, fieldName, mod
         {
             collectionName: colName,
             batchIndex: i,
+            batchSize: batchSize,
+            numberOfBatches: numBatches,
+            batchOffset: batchOffset,
             modelMetadata: modelMetadata,
             graphName: graphName,
             fieldName: fieldName,
-            batchSize: batchSize,
             destinationCollection: destinationCollection,
             separateCollection: separateCollection,
-            isLastBatch: isLastBatch
         }
     );
 }
@@ -37,36 +42,31 @@ function queueBatch(scriptName, i, batchSize, graphName, colName, fieldName, mod
  * Returns true if batch jobs have been queued. This does NOT mean that they've succeeded yet.
  */
 function generateBatches(scriptType, graphName, collectionName, fieldName, destinationCollection, separateCollection, modelMetadata) {
-    const myCol = db._collection(collectionName);
-    const numberOfDocuments = query`
-    RETURN COUNT(
-        FOR doc in ${myCol}
-        FILTER doc.${fieldName} != null
-        RETURN 1
-    )
-    `.toArray();
+    const numberOfDocuments = getCountDocumentsWithoutEmbedding(
+        getEmbeddingsStatusDict(collectionName, destinationCollection, fieldName, modelMetadata),
+        fieldName
+    );
 
     const batch_size = modelMetadata.metadata.inference_batch_size;
     const numBatches = Math.ceil(numberOfDocuments / batch_size);
 
     const embQ = queues.create(embeddingQueueName);
 
-    Array(numBatches)
-        .fill()
-        .map((_, i) => i)
-        .forEach(i => queueBatch(
-            scriptType,
-            i,
-            batch_size,
-            graphName,
-            collectionName,
-            fieldName,
-            modelMetadata,
-            embQ,
-            destinationCollection,
-            separateCollection,
-            i === (numBatches - 1)
-        ));
+    // The queue will be invoked recursively
+    queueBatch(
+        scriptType,
+        0,
+        batch_size,
+        numBatches,
+        0,
+        graphName,
+        collectionName,
+        fieldName,
+        modelMetadata,
+        embQ,
+        destinationCollection,
+        separateCollection
+    );
 }
 
 function generateBatchesForModel(graphName, collectionName, fieldName, destinationCollection, separateCollection, modelMetadata) {
@@ -88,3 +88,5 @@ function generateBatchesForModel(graphName, collectionName, fieldName, destinati
 }
 
 exports.generateBatchesForModel = generateBatchesForModel;
+exports.queueBatch = queueBatch;
+exports.scripts = scripts;
