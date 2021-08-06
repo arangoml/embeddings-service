@@ -2,6 +2,9 @@
 
 const {context} = require("@arangodb/locals");
 const queues = require("@arangodb/foxx/queues");
+const {getEmbeddingsStatusDict} = require("./emb_status_service");
+const {getCountDocumentsWithoutEmbedding} = require("./emb_collections_service");
+const {getEmbeddingsFieldName} = require("./emb_collections_service");
 const {modelTypes} = require("../model/model_metadata");
 const {EMB_QUEUE_NAME} = require("../utils/embeddings_queue");
 const {query, db} = require("@arangodb");
@@ -39,16 +42,10 @@ function queueBatch(scriptName, i, batchSize, numBatches, batchOffset, graphName
  * Returns true if batch jobs have been queued. This does NOT mean that they've succeeded yet.
  */
 function generateBatches(scriptType, graphName, collectionName, fieldName, destinationCollection, separateCollection, modelMetadata) {
-    const myCol = db._collection(collectionName);
-    // TODO: Change to handle existing separate collection
-    // if the collection is present, then we need to filter not just on fields but also where there isn't a document
-    const numberOfDocuments = query`
-    RETURN COUNT(
-        FOR doc in ${myCol}
-        FILTER doc.${fieldName} != null
-        RETURN 1
-    )
-    `.toArray();
+    const numberOfDocuments = getCountDocumentsWithoutEmbedding(
+        getEmbeddingsStatusDict(collectionName, destinationCollection, fieldName, modelMetadata),
+        modelMetadata
+    );
 
     const batch_size = modelMetadata.metadata.inference_batch_size;
     const numBatches = Math.ceil(numberOfDocuments / batch_size);

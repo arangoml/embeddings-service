@@ -40,13 +40,12 @@ function deleteEmbeddingsFieldEntries(destinationCollectionName, sourceFieldName
 function getCountDocumentsSameCollection(embeddingsStatusDict, sourceFieldName) {
     const dCol = db._collection(embeddingsStatusDict["destination_collection"]);
     const embedding_field_name = getEmbeddingsFieldName(sourceFieldName, modelMetadata);
-    query`
+    return query`
         RETURN COUNT(FOR doc in ${dCol}
           FILTER doc[${sourceFieldName}] != null
           FILTER doc[${embedding_field_name}] == null
-          FILTER LENGTH(emb_docs) == 0
           RETURN 1)
-        `.count();
+    `.toArray()[0];
 }
 
 function getCountDocumentsSeparateCollection(embeddingsStatusDict, sourceFieldName) {
