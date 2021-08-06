@@ -16,18 +16,36 @@ const isLastBatch = (batchIndex === (numberOfBatches - 1));
 
 const MAX_RETRIES = 5;
 
-function getDocumentsToEmbed(nDocs, startInd, collection, fieldToEmbed) {
-    const start_index = startInd * nDocs;
-
-    return query`
-    FOR doc in ${collection}
-        FILTER doc.${fieldToEmbed} != null
-        LIMIT ${start_index}, ${nDocs}
-        RETURN {
-          "_key": doc._key,
-          "field": doc.${fieldToEmbed}
-        }
-    `.toArray();
+function getDocumentsToEmbed(nDocs, startInd, docCollection, destinationCollection, isSeparateCollection, fieldToEmbed, embeddingFieldName) {
+    if (isSeparateCollection) {
+        return query`
+        FOR doc in ${docCollection}
+            FILTER doc[${fieldToEmbed}] != null
+            LET emb_docs = (
+                FOR emb_d in ${dCol}
+                  FILTER emb_d.doc_key == doc._key
+                  FILTER emb_d.${embeddingFieldName} != null
+                  RETURN 1
+            )  
+            FILTER LENGTH(emb_docs) == 0
+            LIMIT ${startInd}, ${nDocs}
+            RETURN {
+              "_key": doc._key,
+              "field": doc.${fieldToEmbed}
+            }
+        `.toArray();
+    } else {
+        return query`
+        FOR doc in ${collection}
+            FILTER doc.${fieldToEmbed} != null
+            FILTER doc.${embeddingFieldName} == null
+            LIMIT ${startInd}, ${nDocs}
+            RETURN {
+              "_key": doc._key,
+              "field": doc.${fieldToEmbed}
+            }
+        `.toArray();
+    }
 }
 
 function formatBatch(batchData) {
@@ -140,15 +158,24 @@ try {
     // Actual processing done here
     console.log(`Create embeddings for batch ${batchIndex} of size ${batchSize} in collection ${collectionName} using ${modelMetadata.name} on the ${fieldName} field`);
     const collection = db._collection(collectionName)
-    const toEmbed = getDocumentsToEmbed(batchSize, batchIndex, collection, fieldName);
+    let dCollection;
+    if (separateCollection) {
+        dCollection = db._collection(destinationCollection);
+    } else {
+        dCollection = collection;
+    }
+
+    const toEmbed = getDocumentsToEmbed(
+        batchSize, batchOffset, collection, dCollection, separateCollection, fieldName, getEmbeddingsFieldName(fieldName, modelMetadata)
+    );
     const requestData = toEmbed.map(x => x["field"]);
     const res = invokeEmbeddingModel(requestData);
 
     if (res.status === 200) {
         const embeddings = extractEmbeddingsFromResponse(res.body, modelMetadata.metadata.emb_dim);
         if (separateCollection) {
-            const dCollection = db._collection(destinationCollection);
             insertEmbeddingsIntoDBSepCollection(toEmbed, embeddings, fieldName, dCollection, modelMetadata);
+            newBatchOffset += batchSize;
         } else {
             insertEmbeddingsIntoDBSameCollection(toEmbed, embeddings, fieldName, collection, modelMetadata);
         }
