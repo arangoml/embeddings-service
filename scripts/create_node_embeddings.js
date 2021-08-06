@@ -20,14 +20,15 @@ function getDocumentsToEmbed(nDocs, startInd, docCollection, destinationCollecti
     if (isSeparateCollection) {
         return query`
         FOR doc in ${docCollection}
-            FILTER doc[${fieldToEmbed}] != null
             LET emb_docs = (
-                FOR emb_d in ${dCol}
+                FOR emb_d in ${destinationCollection}
                   FILTER emb_d.doc_key == doc._key
                   FILTER emb_d.${embeddingFieldName} != null
+                  LIMIT 1
                   RETURN 1
             )  
             FILTER LENGTH(emb_docs) == 0
+            FILTER doc.${fieldToEmbed} != null
             LIMIT ${startInd}, ${nDocs}
             RETURN {
               "_key": doc._key,
@@ -36,7 +37,7 @@ function getDocumentsToEmbed(nDocs, startInd, docCollection, destinationCollecti
         `.toArray();
     } else {
         return query`
-        FOR doc in ${collection}
+        FOR doc in ${docCollection}
             FILTER doc.${fieldToEmbed} != null
             FILTER doc.${embeddingFieldName} == null
             LIMIT ${startInd}, ${nDocs}
@@ -175,7 +176,6 @@ try {
         const embeddings = extractEmbeddingsFromResponse(res.body, modelMetadata.metadata.emb_dim);
         if (separateCollection) {
             insertEmbeddingsIntoDBSepCollection(toEmbed, embeddings, fieldName, dCollection, modelMetadata);
-            newBatchOffset += batchSize;
         } else {
             insertEmbeddingsIntoDBSameCollection(toEmbed, embeddings, fieldName, collection, modelMetadata);
         }
@@ -188,10 +188,16 @@ try {
         }
     } else {
         console.error("Failed to get requested embeddings!!");
+        newBatchOffset += batchSize;
         handleFailure(true, isLastBatch, collectionName, destinationCollection, fieldName, modelMetadata);
     }
 } catch (e) {
     console.error(`Batch ${batchIndex} failed.`);
+    console.log(e);
+    // Don't accidentally do double increment
+    if (newBatchOffset === batchOffset) {
+        newBatchOffset += batchSize;
+    }
     handleFailure(true, isLastBatch, collectionName, destinationCollection, fieldName, modelMetadata);
 }
 

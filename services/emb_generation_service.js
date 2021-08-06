@@ -44,7 +44,7 @@ function queueBatch(scriptName, i, batchSize, numBatches, batchOffset, graphName
 function generateBatches(scriptType, graphName, collectionName, fieldName, destinationCollection, separateCollection, modelMetadata) {
     const numberOfDocuments = getCountDocumentsWithoutEmbedding(
         getEmbeddingsStatusDict(collectionName, destinationCollection, fieldName, modelMetadata),
-        modelMetadata
+        fieldName
     );
 
     const batch_size = modelMetadata.metadata.inference_batch_size;
