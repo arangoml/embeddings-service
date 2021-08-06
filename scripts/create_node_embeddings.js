@@ -184,6 +184,7 @@ function createNodeEmbeddings() {
         const res = profileCall(invokeEmbeddingModel)(requestData);
 
         if (res.status === 200) {
+            logTimeElapsed(res.body);
             const embeddings = profileCall(extractEmbeddingsFromResponse)(res.body, modelMetadata.metadata.emb_dim);
             if (separateCollection) {
                 profileCall(insertEmbeddingsIntoDBSepCollection)(toEmbed, embeddings, fieldName, dCollection, modelMetadata);
