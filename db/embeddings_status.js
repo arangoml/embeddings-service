@@ -41,15 +41,15 @@ function getStatusesByCollectionDestinationAndEmbName(collectionName, destinatio
 
 function createStatus(collectionName, destinationCollectionName, embeddingsFieldName, status, timestamp) {
     const col = db._collection(embeddingsStatusCollectionName);
-    query`
+    return query`
     INSERT {
         collection: ${collectionName},
         destination_collection: ${destinationCollectionName},
         emb_field_name: ${embeddingsFieldName},
         status: ${status},
         last_run_timestamp: ${timestamp}
-    } INTO ${col}
-    `;
+    } INTO ${col} RETURN NEW
+    `.toArray()[0];
 }
 
 function updateStatusByCollectionDestinationAndEmbName(collectionName, destinationCollectionName, embeddingsFieldName, newStatus, timestamp) {

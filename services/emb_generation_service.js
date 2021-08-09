@@ -2,6 +2,7 @@
 
 const {context} = require("@arangodb/locals");
 const queues = require("@arangodb/foxx/queues");
+const {createAndAddEmbeddingsRunCollection} = require("./emb_collections_service");
 const {getEmbeddingsStatusDict} = require("./emb_status_service");
 const {getCountDocumentsWithoutEmbedding} = require("./emb_collections_service");
 const {getEmbeddingsFieldName} = require("./emb_collections_service");
@@ -16,7 +17,7 @@ const scripts = {
     GRAPH: "createGraphEmbeddings"
 };
 
-function queueBatch(scriptName, i, batchSize, numBatches, batchOffset, graphName, colName, fieldName, modelMetadata, embeddingsQueue, destinationCollection, separateCollection) {
+function queueBatch(scriptName, i, batchSize, numBatches, batchOffset, graphName, colName, fieldName, modelMetadata, embeddingsQueue, destinationCollection, separateCollection, embeddingsRunColName) {
     embeddingsQueue.push(
         {
             mount: context.mount,
@@ -33,6 +34,7 @@ function queueBatch(scriptName, i, batchSize, numBatches, batchOffset, graphName
             fieldName: fieldName,
             destinationCollection: destinationCollection,
             separateCollection: separateCollection,
+            embeddingsRunColName: embeddingsRunColName,
         }
     );
 }
@@ -41,11 +43,14 @@ function queueBatch(scriptName, i, batchSize, numBatches, batchOffset, graphName
  * Queue batch jobs to generate embeddings for a specified model/scriptType.
  * Returns true if batch jobs have been queued. This does NOT mean that they've succeeded yet.
  */
-function generateBatches(scriptType, graphName, collectionName, fieldName, destinationCollection, separateCollection, modelMetadata) {
+function generateBatches(scriptType, graphName, embeddingsStatusDict, fieldName, separateCollection, modelMetadata) {
     const numberOfDocuments = getCountDocumentsWithoutEmbedding(
-        getEmbeddingsStatusDict(collectionName, destinationCollection, fieldName, modelMetadata),
+        embeddingsStatusDict,
         fieldName
     );
+
+    // Create the embeddings run collection
+    const embeddingsRunColName = createAndAddEmbeddingsRunCollection(embeddingsStatusDict, fieldName);
 
     const batch_size = modelMetadata.metadata.inference_batch_size;
     const numBatches = Math.ceil(numberOfDocuments / batch_size);
@@ -60,26 +65,27 @@ function generateBatches(scriptType, graphName, collectionName, fieldName, desti
         numBatches,
         0,
         graphName,
-        collectionName,
+        embeddingsStatusDict["collection"],
         fieldName,
         modelMetadata,
         embQ,
-        destinationCollection,
-        separateCollection
+        embeddingsStatusDict["destination_collection"],
+        separateCollection,
+        embeddingsRunColName
     );
 }
 
-function generateBatchesForModel(graphName, collectionName, fieldName, destinationCollection, separateCollection, modelMetadata) {
+function generateBatchesForModel(graphName, embeddingsStatusDict, fieldName, separateCollection, modelMetadata) {
     switch (modelMetadata.model_type) {
         case modelTypes.WORD_EMBEDDING: {
-            generateBatches(scripts.NODE, graphName, collectionName, fieldName, destinationCollection, separateCollection, modelMetadata);
+            generateBatches(scripts.NODE, graphName, embeddingsStatusDict, fieldName, separateCollection, modelMetadata);
             return true;
         }
         case modelTypes.GRAPH_MODEL: {
             if (!graphName) {
                 throw new Error("Requested to generate graph embeddings but no graph is provided");
             }
-            generateBatches(scripts.GRAPH, graphName, collectionName, fieldName, destinationCollection, separateCollection, modelMetadata);
+            generateBatches(scripts.GRAPH, graphName, embeddingsStatusDict, fieldName, separateCollection, modelMetadata);
             return true;
         }
         default:

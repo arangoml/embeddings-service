@@ -42,7 +42,7 @@ function getEmbeddingsStatusDict(collectionName, destinationCollectionName, fiel
  * Create a new status of how the embeddings generation is going.
  */
 function createEmbeddingsStatus(collectionName, destinationCollectionName, fieldName, modelMetadata) {
-    createStatus(
+    return createStatus(
         collectionName,
         destinationCollectionName,
         getEmbeddingsFieldName(fieldName, modelMetadata),

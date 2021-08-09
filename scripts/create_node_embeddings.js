@@ -12,42 +12,22 @@ const {EMB_QUEUE_NAME} = require("../utils/embeddings_queue");
 
 const {argv} = module.context;
 
-const {batchIndex, batchSize, numberOfBatches, batchOffset, collectionName, modelMetadata, fieldName, destinationCollection, separateCollection } = argv[0];
+const {batchIndex, batchSize, numberOfBatches, batchOffset, collectionName, modelMetadata, fieldName, destinationCollection, separateCollection, embeddingsRunColName} = argv[0];
 const isLastBatch = (batchIndex === (numberOfBatches - 1));
 
 const MAX_RETRIES = 5;
 
-function getDocumentsToEmbed(nDocs, startInd, docCollection, destinationCollection, isSeparateCollection, fieldToEmbed, embeddingFieldName) {
-    if (isSeparateCollection) {
-        return query`
-        FOR doc in ${docCollection}
-            LET emb_docs = (
-                FOR emb_d in ${destinationCollection}
-                  FILTER emb_d.doc_key == doc._key
-                  FILTER emb_d.${embeddingFieldName} != null
-                  LIMIT 1
-                  RETURN 1
-            )  
-            FILTER LENGTH(emb_docs) == 0
-            FILTER doc.${fieldToEmbed} != null
+function getDocumentsToEmbed(nDocs, startInd, docCollection, embeddingsRunCol, fieldToEmbed) {
+    return query`
+        FOR embRunDoc in ${embeddingsRunCol}
             LIMIT ${startInd}, ${nDocs}
-            RETURN {
-              "_key": doc._key,
-              "field": doc.${fieldToEmbed}
-            }
-        `.toArray();
-    } else {
-        return query`
-        FOR doc in ${docCollection}
-            FILTER doc.${fieldToEmbed} != null
-            FILTER doc.${embeddingFieldName} == null
-            LIMIT ${startInd}, ${nDocs}
-            RETURN {
-              "_key": doc._key,
-              "field": doc.${fieldToEmbed}
-            }
-        `.toArray();
-    }
+            FOR doc in ${docCollection}
+                FILTER embRunDoc._key == doc._key
+                RETURN {
+                  "_key": doc._key,
+                  "field": doc.${fieldToEmbed}
+                }
+    `.toArray();
 }
 
 function formatBatch(batchData) {
@@ -165,7 +145,6 @@ function handleFailure(currentBatchFailed, isTheLastBatch, collectionName, desti
 }
 
 function createNodeEmbeddings() {
-    let newBatchOffset = batchOffset;
     try {
         // Actual processing done here
         console.log(`Create embeddings for batch ${batchIndex} of size ${batchSize} in collection ${collectionName} using ${modelMetadata.name} on the ${fieldName} field`);
@@ -177,9 +156,11 @@ function createNodeEmbeddings() {
             dCollection = collection;
         }
 
+        const embeddingsRunCol = db._collection(embeddingsRunColName);
         const toEmbed = profileCall(getDocumentsToEmbed)(
-            batchSize, batchOffset, collection, dCollection, separateCollection, fieldName, getEmbeddingsFieldName(fieldName, modelMetadata)
+            batchSize, batchOffset, collection, embeddingsRunCol, fieldName
         );
+        console.log(`Docs len: ${toEmbed.length}`);
         const requestData = toEmbed.map(x => x["field"]);
         const res = profileCall(invokeEmbeddingModel)(requestData);
 
@@ -200,16 +181,11 @@ function createNodeEmbeddings() {
             }
         } else {
             console.error("Failed to get requested embeddings!!");
-            newBatchOffset += batchSize;
             handleFailure(true, isLastBatch, collectionName, destinationCollection, fieldName, modelMetadata);
         }
     } catch (e) {
         console.error(`Batch ${batchIndex} failed.`);
         console.log(e);
-        // Don't accidentally do double increment
-        if (newBatchOffset === batchOffset) {
-            newBatchOffset += batchSize;
-        }
         handleFailure(true, isLastBatch, collectionName, destinationCollection, fieldName, modelMetadata);
     }
 
@@ -220,15 +196,19 @@ function createNodeEmbeddings() {
             batchIndex + 1,
             batchSize,
             numberOfBatches,
-            newBatchOffset,
+            (batchOffset + batchSize),
             null,
             collectionName,
             fieldName,
             modelMetadata,
             q,
             destinationCollection,
-            separateCollection
+            separateCollection,
+            embeddingsRunColName
         );
+    } else {
+        // If it's the last batch, then we can drop the embeddingsRun collection
+        db._collection(embeddingsRunColName).drop();
     }
 }
 

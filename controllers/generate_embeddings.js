@@ -33,7 +33,7 @@ function initialValidationGenerateEmbParams(req, res) {
 }
 
 
-function handleGenerationForModel(embStatusDict, graphName, collectionName, fieldName, destinationCollectionName, separateCollection, modelMetadata, overwriteExisting) {
+function handleGenerationForModel(embStatusDict, graphName, sourceCollectionName, fieldName, destinationCollectionName, separateCollection, modelMetadata, overwriteExisting) {
     const embStatus = embStatusDict ? embStatusDict["status"] : embeddingsStatus.DOES_NOT_EXIST;
 
     let response_dict = {};
@@ -41,22 +41,23 @@ function handleGenerationForModel(embStatusDict, graphName, collectionName, fiel
 
     switch (embStatus) {
         case embeddingsStatus.DOES_NOT_EXIST:
-            createEmbeddingsStatus(collectionName, destinationCollectionName, fieldName, modelMetadata);
-            if (generateBatchesForModel(graphName, collectionName, fieldName, destinationCollectionName, separateCollection, modelMetadata)) {
+            const newEmbStatusDict = createEmbeddingsStatus(sourceCollectionName, destinationCollectionName, fieldName, modelMetadata);
+            console.log(newEmbStatusDict);
+            if (generateBatchesForModel(graphName, newEmbStatusDict, fieldName, separateCollection, modelMetadata)) {
                 response_dict["message"] = start_msg;
             }
             break;
         case embeddingsStatus.FAILED:
-            updateEmbeddingsStatus(embeddingsStatus.RUNNING, collectionName, destinationCollectionName, fieldName, modelMetadata);
-            if (generateBatchesForModel(graphName, collectionName, fieldName, destinationCollectionName, separateCollection, modelMetadata)) {
+            updateEmbeddingsStatus(embeddingsStatus.RUNNING, sourceCollectionName, destinationCollectionName, fieldName, modelMetadata);
+            if (generateBatchesForModel(graphName, embStatusDict, fieldName, separateCollection, modelMetadata)) {
                 response_dict["message"] = start_msg;
             }
             break;
         case embeddingsStatus.RUNNING:
         case embeddingsStatus.RUNNING_FAILED:
             if (overwriteExisting) {
-                updateEmbeddingsStatus(embeddingsStatus.RUNNING, collectionName, destinationCollectionName, fieldName, modelMetadata);
-                if (generateBatchesForModel(graphName, collectionName, fieldName, destinationCollectionName, separateCollection, modelMetadata)) {
+                updateEmbeddingsStatus(embeddingsStatus.RUNNING, sourceCollectionName, destinationCollectionName, fieldName, modelMetadata);
+                if (generateBatchesForModel(graphName, embStatusDict, fieldName, separateCollection, modelMetadata)) {
                     response_dict["message"] = "Overwriting old embeddings. " + start_msg;
                 }
             } else {
@@ -67,22 +68,22 @@ function handleGenerationForModel(embStatusDict, graphName, collectionName, fiel
             // first check if we have any documents that don't already have an embedding
             if (!overwriteExisting) {
                 if (getCountDocumentsWithoutEmbedding(embStatusDict, fieldName) !== 0) {
-                    updateEmbeddingsStatus(embeddingsStatus.RUNNING, collectionName, destinationCollectionName, fieldName, modelMetadata);
-                    if (generateBatchesForModel(graphName, collectionName, fieldName, destinationCollectionName, separateCollection, modelMetadata)) {
+                    updateEmbeddingsStatus(embeddingsStatus.RUNNING, sourceCollectionName, destinationCollectionName, fieldName, modelMetadata);
+                    if (generateBatchesForModel(graphName, embStatusDict, fieldName, separateCollection, modelMetadata)) {
                         response_dict["message"] = "Adding new embeddings. " + start_msg;
                     }
                 } else {
                     response_dict["message"] = "These embeddings have already been generated!";
                 }
             } else {
-                updateEmbeddingsStatus(embeddingsStatus.RUNNING, collectionName, destinationCollectionName, fieldName, modelMetadata);
-                if (generateBatchesForModel(graphName, collectionName, fieldName, destinationCollectionName, separateCollection, modelMetadata)) {
+                updateEmbeddingsStatus(embeddingsStatus.RUNNING, sourceCollectionName, destinationCollectionName, fieldName, modelMetadata);
+                if (generateBatchesForModel(graphName, embStatusDict, fieldName, separateCollection, modelMetadata)) {
                     response_dict["message"] = "Overwriting old embeddings. " + start_msg;
                 }
             }
             break;
     }
-    response_dict["embeddings_status_id"] = getEmbeddingsStatusDocId(collectionName, destinationCollectionName, fieldName, modelMetadata);
+    response_dict["embeddings_status_id"] = getEmbeddingsStatusDocId(sourceCollectionName, destinationCollectionName, fieldName, modelMetadata);
     return response_dict;
 }
 
