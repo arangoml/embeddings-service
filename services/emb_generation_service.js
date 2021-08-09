@@ -52,7 +52,7 @@ function generateBatches(scriptType, graphName, embeddingsStatusDict, fieldName,
     // Create the embeddings run collection
     const embeddingsRunColName = createAndAddEmbeddingsRunCollection(embeddingsStatusDict, fieldName);
 
-    const batch_size = modelMetadata.metadata.inference_batch_size;
+    const batch_size = 1000;
     const numBatches = Math.ceil(numberOfDocuments / batch_size);
 
     const embQ = queues.create(embeddingQueueName);

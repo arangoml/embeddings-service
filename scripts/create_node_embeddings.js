@@ -144,6 +144,26 @@ function handleFailure(currentBatchFailed, isTheLastBatch, collectionName, desti
     }
 }
 
+function getAndSaveNodeEmbeddingsForMiniBatch(collection, dCollection) {
+    return function (miniBatch) {
+        const requestData = miniBatch.map(x => x["field"]);
+        const res = profileCall(invokeEmbeddingModel)(requestData);
+
+        if (res.status == 200) {
+            logTimeElapsed(res.body);
+            const embeddings = profileCall(extractEmbeddingsFromResponse)(res.body, modelMetadata.metadata.emb_dim);
+            if (separateCollection) {
+                profileCall(insertEmbeddingsIntoDBSepCollection)(miniBatch, embeddings, fieldName, dCollection, modelMetadata);
+            } else {
+                profileCall(insertEmbeddingsIntoDBSameCollection)(miniBatch, embeddings, fieldName, collection, modelMetadata);
+            }
+        } else {
+            console.error("Failed to get requested embeddings for minibatch");
+            handleFailure(true, isLastBatch, collectionName, destinationCollection, fieldName, modelMetadata);
+        }
+    }
+}
+
 function createNodeEmbeddings() {
     try {
         // Actual processing done here
@@ -161,27 +181,16 @@ function createNodeEmbeddings() {
             batchSize, batchOffset, collection, embeddingsRunCol, fieldName
         );
         console.log(`Docs len: ${toEmbed.length}`);
-        const requestData = toEmbed.map(x => x["field"]);
-        const res = profileCall(invokeEmbeddingModel)(requestData);
 
-        if (res.status === 200) {
-            logTimeElapsed(res.body);
-            const embeddings = profileCall(extractEmbeddingsFromResponse)(res.body, modelMetadata.metadata.emb_dim);
-            if (separateCollection) {
-                profileCall(insertEmbeddingsIntoDBSepCollection)(toEmbed, embeddings, fieldName, dCollection, modelMetadata);
+        chunkArray(toEmbed, modelMetadata.metadata.inference_batch_size)
+            .forEach(getAndSaveNodeEmbeddingsForMiniBatch(collection, dCollection));
+
+        if (isLastBatch) {
+            if (getEmbeddingsStatus(collectionName, destinationCollection, fieldName, modelMetadata) === embeddingsStatus.RUNNING_FAILED) {
+                handleFailure(false, isLastBatch, collectionName, destinationCollection, fieldName, modelMetadata);
             } else {
-                profileCall(insertEmbeddingsIntoDBSameCollection)(toEmbed, embeddings, fieldName, collection, modelMetadata);
+                updateEmbeddingsStatus(embeddingsStatus.COMPLETED, collectionName, destinationCollection, fieldName, modelMetadata);
             }
-            if (isLastBatch) {
-                if (getEmbeddingsStatus(collectionName, destinationCollection, fieldName, modelMetadata) === embeddingsStatus.RUNNING_FAILED) {
-                    handleFailure(false, isLastBatch, collectionName, destinationCollection, fieldName, modelMetadata);
-                } else {
-                    updateEmbeddingsStatus(embeddingsStatus.COMPLETED, collectionName, destinationCollection, fieldName, modelMetadata);
-                }
-            }
-        } else {
-            console.error("Failed to get requested embeddings!!");
-            handleFailure(true, isLastBatch, collectionName, destinationCollection, fieldName, modelMetadata);
         }
     } catch (e) {
         console.error(`Batch ${batchIndex} failed.`);
