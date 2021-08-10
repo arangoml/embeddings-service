@@ -4,6 +4,7 @@ const createRouter = require("@arangodb/foxx/router");
 const joi = require("joi");
 const {listModels} = require("../controllers/list_models");
 const {generateEmbeddings} = require("../controllers/generate_embeddings");
+const {embeddingsStatusesForModel, embeddingsStatusById} = require("../controllers/embeddings_status");
 const {modelTypes} = require("../model/model_metadata");
 
 const router = createRouter();
@@ -18,7 +19,9 @@ router.post("/generate_embeddings", generateEmbeddings)
             graphName: joi.string(),
             // then pick field
             // (for graph embeddings this is a set of features, for word embeddings this is a text field)
-            fieldName: joi.string().required()
+            fieldName: joi.string().required(),
+            separateCollection: joi.bool().default(true),
+            overwriteExisting: joi.bool().default(false),
         }).required(),
         // This seems to be encased in a "value" object in the swagger doc
         // .example([{
@@ -36,6 +39,10 @@ router.post("/generate_embeddings", generateEmbeddings)
          \`collectionName\`: name of the collection that you want to embed
          \`graphName\`: name of the graph that you want to embed (please note: not required if generating node specific features e.g. word embeddings)
          \`fieldName\`: name of the field to embed. For graph embeddings this is a feature vector, for word embeddings this is a string.
+         \`separateCollection\`: whether or not to store embeddings in a separate collection - \`true\` by default. If set to false, the embeddings
+         \twill be stored on the documents in the specified collection.
+         \`overwriteExisting\`: \`false\` by default. If set to \`true\` then this will overwrite existing embeddings for the collection+field+model combination
+         \t if it exists.
          `
     ).response(
         400,
@@ -44,7 +51,47 @@ router.post("/generate_embeddings", generateEmbeddings)
         422,
         joi.string(),
         "Invalid input"
-    ).response(200, joi.string());
+    ).response(200,
+        joi.object({
+            message: joi.string(),
+            embeddings_status_id: joi.string()
+        })
+    );
+
+router.get("/embeddings_status/:statusId", embeddingsStatusById)
+    .pathParam("statusId", joi.string().required(), "ID of embeddings generation status")
+    .response(
+        404,
+        joi.string(),
+        "Not found"
+    )
+    .response(200,
+        joi.object({
+            status: joi.string(),
+            documentCollection: joi.string(),
+            embeddingsCollection: joi.string(),
+            embeddingsFieldName: joi.string()
+        })
+    );
+
+router.get("/embeddings_status", embeddingsStatusesForModel)
+    .queryParam("modelName", joi.string().required())
+    .queryParam("modelType", joi.string().required())
+    .queryParam("collectionName", joi.string().required())
+    .queryParam("fieldName", joi.string().required())
+    .response(
+        404,
+        joi.string(),
+        "Not found"
+    )
+    .response(200,
+        joi.object({
+            status: joi.string(),
+            documentCollection: joi.string(),
+            embeddingsCollection: joi.string(),
+            embeddingsFieldName: joi.string()
+        })
+    );
 
 router.get("/models", listModels)
     .response(

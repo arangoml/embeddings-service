@@ -2,6 +2,7 @@
 
 const db = require("@arangodb").db;
 const {modelTypes, metadataCollectionName, modelMetadataSchema} = require("../model/model_metadata");
+const {embeddingsStatusCollectionName, embeddingsStatusSchema}  = require("../model/embeddings_status");
 
 
 function createModelMetadataCollection() {
@@ -11,33 +12,41 @@ function createModelMetadataCollection() {
     return db._collection(metadataCollectionName);
 }
 
+function createEmbeddingsStatusCollection() {
+    if (!db._collection(embeddingsStatusCollectionName)) {
+        db._createDocumentCollection(embeddingsStatusCollectionName, { "schema": embeddingsStatusSchema });
+    }
+    return db._collection(embeddingsStatusCollectionName);
+}
+
 const seedData = [
     {
         model_type: modelTypes.WORD_EMBEDDING,
-        name: "distilbert-base-uncased",
-        _key: "distilbert-base-uncased",
+        name: "paraphrase-mpnet-base-v2",
+        _key: "paraphrase-mpnet-base-v2",
         framework: {
             name: "pytorch",
             version: "1.9.0"
         },
-        website: "https://huggingface.co/distilbert-base-uncased",
+        website: "https://www.sbert.net/docs/pretrained_models.html",
         // This is the name that this model will have on the compute node. May differ from display name
-        invocation_name: "distilbert-base-uncased",
+        invocation_name: "word_embeddings",
         data: [ // A list of the datasets that were used during training
             // modification of the MLSpec - MLSpec has a single data source specified
-            {
-                source_id: "BOOK-CORPUS",
-                domain: "text",
-                website: "https://yknzhu.wixsite.com/mbweb"
-            },
-            {
-                source_id: "EN-Wikipedia",
-                domain: "text",
-                website: "https://en.wikipedia.org/wiki/English_Wikipedia"
-            }
+            // {
+            //     source_id: "BOOK-CORPUS",
+            //     domain: "text",
+            //     website: "https://yknzhu.wixsite.com/mbweb"
+            // },
+            // {
+            //     source_id: "EN-Wikipedia",
+            //     domain: "text",
+            //     website: "https://en.wikipedia.org/wiki/English_Wikipedia"
+            // }
         ],
         metadata: {
             emb_dim: 768,
+            inference_batch_size: 64,
             schema: {
                 type: "RAW/TEXT",
             }
@@ -70,6 +79,7 @@ const seedData = [
         },
         metadata: {
             emb_dim: 256,
+            inference_batch_size: 64,
             schema: {
                 features: ["bag_of_words"],
                 type: "NUMERIC",
@@ -92,3 +102,4 @@ function seedMetadataCol(collection) {
 
 const modelMetadataCol = createModelMetadataCollection();
 seedMetadataCol(modelMetadataCol);
+createEmbeddingsStatusCollection();
