@@ -16,7 +16,7 @@ function profileCall(fn) {
         const start = new Date();
         const result = fn.apply(this, arguments);
         const end = new Date();
-        if (!context.configuration.enableProfiling) {
+        if (context.configuration.enableProfiling) {
             logMsg(`Call to ${fn.name} took ${end - start} ms.`);
         }
         return result;
