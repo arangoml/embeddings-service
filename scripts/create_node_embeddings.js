@@ -4,6 +4,8 @@ const request = require("@arangodb/request");
 const {profileCall} = require("../utils/profiling");
 const {context} = require("@arangodb/locals");
 const queues = require("@arangodb/foxx/queues");
+const {logErr} = require("../utils/logging");
+const {logMsg} = require("../utils/logging");
 const {getEmbeddingsFieldName, deleteEmbeddingsFieldEntries} = require("../services/emb_collections_service");
 const {getEmbeddingsStatus, updateEmbeddingsStatus} = require("../services/emb_status_service");
 const {queueBatch, scripts} = require("../services/emb_generation_service");
@@ -78,11 +80,14 @@ function extractEmbeddingsFromResponse(response_json, embedding_dim) {
 }
 
 function logTimeElapsed(response_json) {
+    if (context.configuration.enableProfiling === false) {
+        return;
+    }
     const output = JSON.parse(response_json);
     output["outputs"]
         .filter(e => e["name"].startsWith("TIME"))
         .forEach(e => {
-            console.log(`Model call ${e["name"]} on compute node took ${e["data"]} ms`);
+            logMsg(`Model call ${e["name"]} on compute node took ${e["data"]} ms`);
         });
 }
 
@@ -128,7 +133,7 @@ function insertEmbeddingsIntoDBSepCollection(docsWithKey, calculatedEmbeddings, 
 
 
 function rollbackGeneratedEmbeddings(destinationCollectionName, fieldName, modelMetadata) {
-    console.log("Rolling back existing embeddings");
+    logMsg("Rolling back existing embeddings");
     deleteEmbeddingsFieldEntries(destinationCollectionName, fieldName, modelMetadata);
 }
 
@@ -158,7 +163,7 @@ function getAndSaveNodeEmbeddingsForMiniBatch(collection, dCollection) {
                 profileCall(insertEmbeddingsIntoDBSameCollection)(miniBatch, embeddings, fieldName, collection, modelMetadata);
             }
         } else {
-            console.error("Failed to get requested embeddings for minibatch");
+            logErr("Failed to get requested embeddings for minibatch");
             handleFailure(true, isLastBatch, collectionName, destinationCollection, fieldName, modelMetadata);
         }
     }
@@ -167,7 +172,7 @@ function getAndSaveNodeEmbeddingsForMiniBatch(collection, dCollection) {
 function createNodeEmbeddings() {
     try {
         // Actual processing done here
-        console.log(`Create embeddings for batch ${batchIndex} of size ${batchSize} in collection ${collectionName} using ${modelMetadata.name} on the ${fieldName} field`);
+        logMsg(`Create embeddings for batch ${batchIndex} of size ${batchSize} in collection ${collectionName} using ${modelMetadata.name} on the ${fieldName} field`);
         const collection = db._collection(collectionName)
         let dCollection;
         if (separateCollection) {
@@ -180,7 +185,6 @@ function createNodeEmbeddings() {
         const toEmbed = profileCall(getDocumentsToEmbed)(
             batchSize, batchOffset, collection, embeddingsRunCol, fieldName
         );
-        console.log(`Docs len: ${toEmbed.length}`);
 
         chunkArray(toEmbed, modelMetadata.metadata.inference_batch_size)
             .forEach(getAndSaveNodeEmbeddingsForMiniBatch(collection, dCollection));
@@ -193,8 +197,8 @@ function createNodeEmbeddings() {
             }
         }
     } catch (e) {
-        console.error(`Batch ${batchIndex} failed.`);
-        console.log(e);
+        logErr(`Batch ${batchIndex} failed.`);
+        logErr(e);
         handleFailure(true, isLastBatch, collectionName, destinationCollection, fieldName, modelMetadata);
     }
 

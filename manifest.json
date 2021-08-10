@@ -9,6 +9,16 @@
       "type": "string",
       "default": "http://localhost:8000",
       "description": "URL of the embeddings service"
+    },
+    "enableProfiling": {
+      "type": "boolean",
+      "default": false,
+      "description": "If enabled, profiled function call times will be logged"
+    },
+    "enableLogging": {
+      "type": "boolean",
+      "default": false,
+      "description": "Enable log messages"
     }
   },
   "scripts": {
