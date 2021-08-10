@@ -3,12 +3,9 @@
 const {context} = require("@arangodb/locals");
 const queues = require("@arangodb/foxx/queues");
 const {createAndAddEmbeddingsRunCollection} = require("./emb_collections_service");
-const {getEmbeddingsStatusDict} = require("./emb_status_service");
 const {getCountDocumentsWithoutEmbedding} = require("./emb_collections_service");
-const {getEmbeddingsFieldName} = require("./emb_collections_service");
 const {modelTypes} = require("../model/model_metadata");
 const {EMB_QUEUE_NAME} = require("../utils/embeddings_queue");
-const {query, db} = require("@arangodb");
 
 const embeddingQueueName = EMB_QUEUE_NAME;
 
