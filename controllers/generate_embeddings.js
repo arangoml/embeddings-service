@@ -42,7 +42,6 @@ function handleGenerationForModel(embStatusDict, graphName, sourceCollectionName
     switch (embStatus) {
         case embeddingsStatus.DOES_NOT_EXIST:
             const newEmbStatusDict = createEmbeddingsStatus(sourceCollectionName, destinationCollectionName, fieldName, modelMetadata);
-            console.log(newEmbStatusDict);
             if (generateBatchesForModel(graphName, newEmbStatusDict, fieldName, separateCollection, modelMetadata)) {
                 response_dict["message"] = start_msg;
             }
@@ -83,6 +82,12 @@ function handleGenerationForModel(embStatusDict, graphName, sourceCollectionName
             }
             break;
     }
+
+    if (response_dict["message"] === undefined) {
+        updateEmbeddingsStatus(embeddingsStatus.COMPLETED, sourceCollectionName, destinationCollectionName, fieldName, modelMetadata);
+        response_dict["message"] = "Nothing to embed.";
+    }
+
     response_dict["embeddings_status_id"] = getEmbeddingsStatusDocId(sourceCollectionName, destinationCollectionName, fieldName, modelMetadata);
     return response_dict;
 }

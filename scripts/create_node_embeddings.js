@@ -15,7 +15,7 @@ const {EMB_QUEUE_NAME} = require("../utils/embeddings_queue");
 const {argv} = module.context;
 
 const {batchIndex, batchSize, numberOfBatches, batchOffset, collectionName, modelMetadata, fieldName, destinationCollection, separateCollection, embeddingsRunColName} = argv[0];
-const isLastBatch = (batchIndex === (numberOfBatches - 1));
+const isLastBatch = (batchIndex >= (numberOfBatches - 1));
 
 const MAX_RETRIES = 5;
 

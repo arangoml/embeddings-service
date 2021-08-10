@@ -164,8 +164,22 @@ function createAndAddEmbeddingsRunCollection(embeddingsStatusDict, sourceFieldNa
     }
 }
 
+function getCountEmbeddingsRunCollection(embeddingsStatusDict) {
+    let colName = embeddingsRunCollectionName(embeddingsStatusDict);
+    let embeddingsRunCol = db._collection(colName);
+    if (!embeddingsRunCol) {
+        return 0;
+    }
+    return query`
+    RETURN COUNT(FOR d in ${embeddingsRunCol} RETURN 1)
+    `.toArray()[0];
+}
+
+
 exports.getDestinationCollectionName = getDestinationCollectionName;
 exports.getEmbeddingsFieldName = getEmbeddingsFieldName;
 exports.deleteEmbeddingsFieldEntries = deleteEmbeddingsFieldEntries;
 exports.getCountDocumentsWithoutEmbedding = getCountDocumentsWithoutEmbedding;
 exports.createAndAddEmbeddingsRunCollection = createAndAddEmbeddingsRunCollection;
+exports.clearEmbeddingsRunCollection = clearEmbeddingsRunCollection;
+exports.getCountEmbeddingsRunCollection = getCountEmbeddingsRunCollection;
