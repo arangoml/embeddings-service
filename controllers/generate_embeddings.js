@@ -57,7 +57,7 @@ function handleGenerationForModel(embStatusDict, graphName, sourceCollectionName
         case embeddingsStatus.RUNNING_FAILED:
             if (overwriteExisting) {
                 updateEmbeddingsStatus(embeddingsStatus.RUNNING, sourceCollectionName, destinationCollectionName, fieldName, modelMetadata);
-                if (generateBatchesForModel(graphName, embStatusDict, fieldName, separateCollection, modelMetadata)) {
+                if (generateBatchesForModel(graphName, embStatusDict, fieldName, separateCollection, modelMetadata, true)) {
                     response_dict["message"] = "Overwriting old embeddings. " + start_msg;
                 }
             } else {
@@ -77,7 +77,7 @@ function handleGenerationForModel(embStatusDict, graphName, sourceCollectionName
                 }
             } else {
                 updateEmbeddingsStatus(embeddingsStatus.RUNNING, sourceCollectionName, destinationCollectionName, fieldName, modelMetadata);
-                if (generateBatchesForModel(graphName, embStatusDict, fieldName, separateCollection, modelMetadata)) {
+                if (generateBatchesForModel(graphName, embStatusDict, fieldName, separateCollection, modelMetadata, true)) {
                     response_dict["message"] = "Overwriting old embeddings. " + start_msg;
                 }
             }

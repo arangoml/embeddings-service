@@ -138,7 +138,25 @@ function createAndAddEmbeddingsRunCollectionSeparateCollection(embeddingsStatusD
     return embeddingsRunCol.name();
 }
 
-function createAndAddEmbeddingsRunCollection(embeddingsStatusDict, sourceFieldName) {
+function createAndAddEmbeddingsRunCollectionAllValidDocs(embeddingsStatusDict, sourceFieldName) {
+    // Clear any docs first
+    clearEmbeddingsRunCollection(embeddingsStatusDict);
+    const embeddingsRunCol = createEmbeddingsRunCollection(embeddingsStatusDict);
+    const sourceCol = db._collection(embeddingsStatusDict["collection"]);
+    query`
+        FOR doc in ${sourceCol}
+          FILTER doc.${sourceFieldName} != null
+          INSERT { _key: doc._key } INTO ${embeddingsRunCol}
+    `;
+    return embeddingsRunCol.name();
+}
+
+function createAndAddEmbeddingsRunCollection(embeddingsStatusDict, sourceFieldName, overwriteExisting) {
+    if (overwriteExisting) {
+        // here we just add all valid docs!
+        return createAndAddEmbeddingsRunCollectionAllValidDocs(embeddingsStatusDict, sourceFieldName);
+    }
+
     if (embeddingsStatusDict["destination_collection"] === embeddingsStatusDict["collection"]) {
         return createAndAddEmbeddingsRunCollectionSameCollection(embeddingsStatusDict, sourceFieldName);
     } else {
