@@ -39,26 +39,30 @@ function getStatusesByCollectionDestinationAndEmbName(collectionName, destinatio
     `.toArray();
 }
 
-function createStatus(collectionName, destinationCollectionName, embeddingsFieldName, status) {
+function createStatus(collectionName, destinationCollectionName, embeddingsFieldName, status, timestamp) {
     const col = db._collection(embeddingsStatusCollectionName);
-    query`
+    return query`
     INSERT {
         collection: ${collectionName},
         destination_collection: ${destinationCollectionName},
         emb_field_name: ${embeddingsFieldName},
-        status: ${status}
-    } INTO ${col}
-    `;
+        status: ${status},
+        last_run_timestamp: ${timestamp}
+    } INTO ${col} RETURN NEW
+    `.toArray()[0];
 }
 
-function updateStatusByCollectionDestinationAndEmbName(collectionName, destinationCollectionName, embeddingsFieldName, newStatus) {
+function updateStatusByCollectionDestinationAndEmbName(collectionName, destinationCollectionName, embeddingsFieldName, newStatus, timestamp) {
     const col = db._collection(embeddingsStatusCollectionName);
     query`
     FOR d in ${col}
         FILTER d.collection == ${collectionName}
         AND d.destination_collection == ${destinationCollectionName}
         AND d.emb_field_name == ${embeddingsFieldName}
-        UPDATE d._key WITH { status: ${newStatus} } IN ${col}
+        UPDATE d._key WITH {
+            status: ${newStatus},
+            last_run_timestamp: ${timestamp} 
+        } IN ${col}
     `;
 }
 

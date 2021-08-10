@@ -28,14 +28,26 @@ function getEmbeddingsStatusDocId(collectionName, destinationCollectionName, fie
 }
 
 /**
+ * Get the entire embedding status entry. Returns `null` if not found
+ */
+function getEmbeddingsStatusDict(collectionName, destinationCollectionName, fieldName, modelMetadata) {
+    const res = getStatusesByCollectionDestinationAndEmbName(collectionName, destinationCollectionName, getEmbeddingsFieldName(fieldName, modelMetadata))
+    if (res.length === 0) {
+        return null;
+    }
+    return res[0];
+}
+
+/**
  * Create a new status of how the embeddings generation is going.
  */
 function createEmbeddingsStatus(collectionName, destinationCollectionName, fieldName, modelMetadata) {
-    createStatus(
+    return createStatus(
         collectionName,
         destinationCollectionName,
         getEmbeddingsFieldName(fieldName, modelMetadata),
-        embeddingsStatus.RUNNING
+        embeddingsStatus.RUNNING,
+        new Date().toISOString()
     );
 }
 
@@ -47,7 +59,8 @@ function updateEmbeddingsStatus(newStatus, collectionName, destinationCollection
         collectionName,
         destinationCollectionName,
         getEmbeddingsFieldName(fieldName, modelMetadata),
-        newStatus
+        newStatus,
+        new Date().toISOString()
     );
 }
 
@@ -55,3 +68,4 @@ exports.getEmbeddingsStatus = getEmbeddingsStatus;
 exports.getEmbeddingsStatusDocId = getEmbeddingsStatusDocId;
 exports.createEmbeddingsStatus = createEmbeddingsStatus;
 exports.updateEmbeddingsStatus = updateEmbeddingsStatus;
+exports.getEmbeddingsStatusDict = getEmbeddingsStatusDict;

@@ -2,17 +2,19 @@
 
 const {context} = require("@arangodb/locals");
 const queues = require("@arangodb/foxx/queues");
+const {createAndAddEmbeddingsRunCollection} = require("./emb_collections_service");
+const {getCountDocumentsWithoutEmbedding} = require("./emb_collections_service");
 const {modelTypes} = require("../model/model_metadata");
-const {query, db} = require("@arangodb");
+const {EMB_QUEUE_NAME} = require("../utils/embeddings_queue");
 
-const embeddingQueueName = "embeddings_generation";
+const embeddingQueueName = EMB_QUEUE_NAME;
 
 const scripts = {
     NODE: "createNodeEmbeddings",
     GRAPH: "createGraphEmbeddings"
 };
 
-function queueBatch(scriptName, i, batchSize, graphName, colName, fieldName, modelMetadata, embeddingsQueue, destinationCollection, separateCollection, isLastBatch) {
+function queueBatch(scriptName, i, batchSize, numBatches, batchOffset, graphName, colName, fieldName, modelMetadata, embeddingsQueue, destinationCollection, separateCollection, embeddingsRunColName) {
     embeddingsQueue.push(
         {
             mount: context.mount,
@@ -21,13 +23,15 @@ function queueBatch(scriptName, i, batchSize, graphName, colName, fieldName, mod
         {
             collectionName: colName,
             batchIndex: i,
+            batchSize: batchSize,
+            numberOfBatches: numBatches,
+            batchOffset: batchOffset,
             modelMetadata: modelMetadata,
             graphName: graphName,
             fieldName: fieldName,
-            batchSize: batchSize,
             destinationCollection: destinationCollection,
             separateCollection: separateCollection,
-            isLastBatch: isLastBatch
+            embeddingsRunColName: embeddingsRunColName,
         }
     );
 }
@@ -36,50 +40,49 @@ function queueBatch(scriptName, i, batchSize, graphName, colName, fieldName, mod
  * Queue batch jobs to generate embeddings for a specified model/scriptType.
  * Returns true if batch jobs have been queued. This does NOT mean that they've succeeded yet.
  */
-function generateBatches(scriptType, graphName, collectionName, fieldName, destinationCollection, separateCollection, modelMetadata) {
-    const myCol = db._collection(collectionName);
-    const numberOfDocuments = query`
-    RETURN COUNT(
-        FOR doc in ${myCol}
-        FILTER doc.${fieldName} != null
-        RETURN 1
-    )
-    `.toArray();
+function generateBatches(scriptType, graphName, embeddingsStatusDict, fieldName, separateCollection, modelMetadata, overwriteExisting) {
+    const numberOfDocuments = getCountDocumentsWithoutEmbedding(
+        embeddingsStatusDict,
+        fieldName
+    );
 
-    const batch_size = modelMetadata.metadata.inference_batch_size;
+    // Create the embeddings run collection
+    const embeddingsRunColName = createAndAddEmbeddingsRunCollection(embeddingsStatusDict, fieldName, overwriteExisting);
+
+    const batch_size = 1000;
     const numBatches = Math.ceil(numberOfDocuments / batch_size);
 
     const embQ = queues.create(embeddingQueueName);
 
-    Array(numBatches)
-        .fill()
-        .map((_, i) => i)
-        .forEach(i => queueBatch(
-            scriptType,
-            i,
-            batch_size,
-            graphName,
-            collectionName,
-            fieldName,
-            modelMetadata,
-            embQ,
-            destinationCollection,
-            separateCollection,
-            i === (numBatches - 1)
-        ));
+    // The queue will be invoked recursively
+    queueBatch(
+        scriptType,
+        0,
+        batch_size,
+        numBatches,
+        0,
+        graphName,
+        embeddingsStatusDict["collection"],
+        fieldName,
+        modelMetadata,
+        embQ,
+        embeddingsStatusDict["destination_collection"],
+        separateCollection,
+        embeddingsRunColName
+    );
 }
 
-function generateBatchesForModel(graphName, collectionName, fieldName, destinationCollection, separateCollection, modelMetadata) {
+function generateBatchesForModel(graphName, embeddingsStatusDict, fieldName, separateCollection, modelMetadata, overwriteExisting = false) {
     switch (modelMetadata.model_type) {
         case modelTypes.WORD_EMBEDDING: {
-            generateBatches(scripts.NODE, graphName, collectionName, fieldName, destinationCollection, separateCollection, modelMetadata);
+            generateBatches(scripts.NODE, graphName, embeddingsStatusDict, fieldName, separateCollection, modelMetadata, overwriteExisting);
             return true;
         }
         case modelTypes.GRAPH_MODEL: {
             if (!graphName) {
                 throw new Error("Requested to generate graph embeddings but no graph is provided");
             }
-            generateBatches(scripts.GRAPH, graphName, collectionName, fieldName, destinationCollection, separateCollection, modelMetadata);
+            generateBatches(scripts.GRAPH, graphName, embeddingsStatusDict, fieldName, separateCollection, modelMetadata, overwriteExisting);
             return true;
         }
         default:
@@ -88,3 +91,5 @@ function generateBatchesForModel(graphName, collectionName, fieldName, destinati
 }
 
 exports.generateBatchesForModel = generateBatchesForModel;
+exports.queueBatch = queueBatch;
+exports.scripts = scripts;

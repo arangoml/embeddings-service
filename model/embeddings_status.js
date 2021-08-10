@@ -18,14 +18,17 @@ const embeddingsStatusSchema = {
             "emb_field_name": { "type": "string" },
             "collection": { "type": "string" },
             "destination_collection": { "type": "string" },
-            "status": { "enum": [
+            "status": {
+                "enum": [
                     embeddingsStatus.RUNNING,
                     embeddingsStatus.RUNNING_FAILED,
                     embeddingsStatus.FAILED,
                     embeddingsStatus.COMPLETED,
-                ] }
+                ]
+            },
+            "last_run_timestamp": { "type": "string" }
         },
-        "required": ["emb_field_name", "collection", "destination_collection", "status"]
+        "required": ["emb_field_name", "collection", "destination_collection", "status", "last_run_timestamp"]
     },
     level: "moderate",
     message: "The embeddings status is invalid"
