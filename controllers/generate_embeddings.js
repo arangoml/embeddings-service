@@ -1,6 +1,6 @@
 "use strict";
 
-const {getCountDocumentsWithoutEmbedding} = require("../services/emb_collections_service");
+const {getCountDocumentsWithoutEmbedding, pruneEmbeddings} = require("../services/emb_collections_service");
 const {getEmbeddingsStatusDict} = require("../services/emb_status_service");
 const {checkCollectionIsPresent, checkGraphIsPresent} = require("../utils/db");
 const {updateEmbeddingsStatus} = require("../services/emb_status_service");
@@ -39,6 +39,7 @@ function handleGenerationForModel(embStatusDict, graphName, sourceCollectionName
 
     let response_dict = {};
     const start_msg = "Queued generation of embeddings!";
+    let shouldPrune = true;
     let shouldEmbed = false;
 
     switch (embStatus) {
@@ -65,6 +66,8 @@ function handleGenerationForModel(embStatusDict, graphName, sourceCollectionName
         case embeddingsStatus.COMPLETED:
             // first check if we have any documents that don't already have an embedding
             if (!overwriteExisting) {
+                pruneEmbeddings(embStatusDict, fieldName);
+                shouldPrune = false;
                 if (getCountDocumentsWithoutEmbedding(embStatusDict, fieldName) !== 0) {
                     updateEmbeddingsStatus(embeddingsStatus.RUNNING, sourceCollectionName, destinationCollectionName, fieldName, modelMetadata);
                     shouldEmbed = true;
@@ -81,6 +84,9 @@ function handleGenerationForModel(embStatusDict, graphName, sourceCollectionName
     }
 
     if (shouldEmbed) {
+        if (shouldPrune) {
+            pruneEmbeddings(embStatusDict, fieldName);
+        }
         if (generateBatchesForModel(graphName, newEmbStatusDict, fieldName, separateCollection, modelMetadata, overwriteExisting)) {
             // NOP
         } else {

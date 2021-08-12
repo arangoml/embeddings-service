@@ -80,7 +80,49 @@ function getCountDocumentsWithoutEmbedding(embeddingsStatusDict, sourceFieldName
     }
 }
 
+function pruneDocsWithChangedFieldsSameCollection(embeddingsStatusDict, fieldName) {
+
+}
+
+function pruneDocsWithChangedFieldsSeparateCollection(embeddingsStatusDict, fieldName) {
+
+}
+
+function pruneDocsWithChangedFields(embeddingsStatusDict, fieldName) {
+    if (embeddingsStatusDict["destination_collection"] === embeddingsStatusDict["collection"]) {
+        pruneDocsWithChangedFieldsSameCollection(embeddingsStatusDict, fieldName);
+    } else {
+        pruneDocsWithChangedFieldsSeparateCollection(embeddingsStatusDict, fieldName);
+    }
+}
+
+function pruneDeletedDocs(embeddingsStatusDict) {
+    if (embeddingsStatusDict["destination_collection"] !== embeddingsStatusDict["collection"]) {
+        const dCol = db._collection(embeddingsStatusDict["destination_collection"]);
+        const sCol = db._collection(embeddingsStatusDict["collection"]);
+
+        query`
+            FOR emb_doc in ${dCol}
+                LET corresponding = (
+                    FOR doc in ${sCol}
+                        FILTER doc._key == emb_doc.doc_key
+                        LIMIT 1
+                        RETURN 1
+                )
+                FILTER LENGTH(corresponding) == 0
+                REMOVE emb_doc IN ${dCol}
+        `;
+    }
+}
+
+function pruneEmbeddings(embeddingsStatusDict, fieldName) {
+    pruneDocsWithChangedFields(embeddingsStatusDict, fieldName);
+    pruneDeletedDocs(embeddingsStatusDict);
+}
+
+
 exports.getDestinationCollectionName = getDestinationCollectionName;
 exports.getEmbeddingsFieldName = getEmbeddingsFieldName;
 exports.deleteEmbeddingsFieldEntries = deleteEmbeddingsFieldEntries;
 exports.getCountDocumentsWithoutEmbedding = getCountDocumentsWithoutEmbedding;
+exports.pruneEmbeddings = pruneEmbeddings;
