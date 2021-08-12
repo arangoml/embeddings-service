@@ -81,11 +81,40 @@ function getCountDocumentsWithoutEmbedding(embeddingsStatusDict, sourceFieldName
 }
 
 function pruneDocsWithChangedFieldsSameCollection(embeddingsStatusDict, fieldName) {
-
+    const sCol = db._collection(embeddingsStatusDict["collection"]);
+    const emb_field_name = embeddingsStatusDict["emb_field_name"];
+    const emb_field_name_hash = `${emb_field_name}_hash`;
+    query`
+        FOR doc in ${sCol}
+            FILTER doc.${emb_field_name_hash} != SHA1(doc.${fieldName})
+            UPDATE doc WITH {
+                ${emb_field_name}: null,
+                ${emb_field_name_hash}: null
+            } IN ${sCol} OPTIONS { keepNull: false }
+    `;
 }
 
 function pruneDocsWithChangedFieldsSeparateCollection(embeddingsStatusDict, fieldName) {
+    const dCol = db._collection(embeddingsStatusDict["destination_collection"]);
+    const sCol = db._collection(embeddingsStatusDict["collection"]);
 
+    const emb_field_name = embeddingsStatusDict["emb_field_name"];
+    const emb_field_name_hash = `${emb_field_name}_hash`;
+
+    query`
+        FOR emb_doc in ${dCol}
+            LET corresponding = FIRST(
+                FOR doc in ${sCol}
+                    FILTER doc._key == emb_doc.doc_key
+                    LIMIT 1
+                    RETURN doc
+            )
+            FILTER emb_doc.${emb_field_name_hash} != SHA1(corresponding.${fieldName})
+            UPDATE emb_doc WITH {
+                ${emb_field_name}: null,
+                ${emb_field_name_hash}: null
+            } IN ${dCol} OPTIONS { keepNull: false }
+    `;
 }
 
 function pruneDocsWithChangedFields(embeddingsStatusDict, fieldName) {
@@ -116,8 +145,8 @@ function pruneDeletedDocs(embeddingsStatusDict) {
 }
 
 function pruneEmbeddings(embeddingsStatusDict, fieldName) {
-    pruneDocsWithChangedFields(embeddingsStatusDict, fieldName);
     pruneDeletedDocs(embeddingsStatusDict);
+    pruneDocsWithChangedFields(embeddingsStatusDict, fieldName);
 }
 
 
