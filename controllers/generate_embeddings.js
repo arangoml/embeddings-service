@@ -35,30 +35,29 @@ function initialValidationGenerateEmbParams(req, res) {
 
 function handleGenerationForModel(embStatusDict, graphName, sourceCollectionName, fieldName, destinationCollectionName, separateCollection, modelMetadata, overwriteExisting) {
     const embStatus = embStatusDict ? embStatusDict["status"] : embeddingsStatus.DOES_NOT_EXIST;
+    let newEmbStatusDict = embStatusDict;
 
     let response_dict = {};
     const start_msg = "Queued generation of embeddings!";
+    let shouldEmbed = false;
 
     switch (embStatus) {
         case embeddingsStatus.DOES_NOT_EXIST:
-            const newEmbStatusDict = createEmbeddingsStatus(sourceCollectionName, destinationCollectionName, fieldName, modelMetadata);
-            if (generateBatchesForModel(graphName, newEmbStatusDict, fieldName, separateCollection, modelMetadata)) {
-                response_dict["message"] = start_msg;
-            }
+            newEmbStatusDict = createEmbeddingsStatus(sourceCollectionName, destinationCollectionName, fieldName, modelMetadata);
+            shouldEmbed = true;
+            response_dict["message"] = start_msg;
             break;
         case embeddingsStatus.FAILED:
             updateEmbeddingsStatus(embeddingsStatus.RUNNING, sourceCollectionName, destinationCollectionName, fieldName, modelMetadata);
-            if (generateBatchesForModel(graphName, embStatusDict, fieldName, separateCollection, modelMetadata)) {
-                response_dict["message"] = start_msg;
-            }
+            shouldEmbed = true;
+            response_dict["message"] = start_msg;
             break;
         case embeddingsStatus.RUNNING:
         case embeddingsStatus.RUNNING_FAILED:
             if (overwriteExisting) {
                 updateEmbeddingsStatus(embeddingsStatus.RUNNING, sourceCollectionName, destinationCollectionName, fieldName, modelMetadata);
-                if (generateBatchesForModel(graphName, embStatusDict, fieldName, separateCollection, modelMetadata, true)) {
-                    response_dict["message"] = "Overwriting old embeddings. " + start_msg;
-                }
+                shouldEmbed = true;
+                response_dict["message"] = "Overwriting old embeddings. " + start_msg;
             } else {
                 response_dict["message"] = "Generation of embeddings is already running!";
             }
@@ -68,24 +67,26 @@ function handleGenerationForModel(embStatusDict, graphName, sourceCollectionName
             if (!overwriteExisting) {
                 if (getCountDocumentsWithoutEmbedding(embStatusDict, fieldName) !== 0) {
                     updateEmbeddingsStatus(embeddingsStatus.RUNNING, sourceCollectionName, destinationCollectionName, fieldName, modelMetadata);
-                    if (generateBatchesForModel(graphName, embStatusDict, fieldName, separateCollection, modelMetadata)) {
-                        response_dict["message"] = "Adding new embeddings. " + start_msg;
-                    }
+                    shouldEmbed = true;
+                    response_dict["message"] = "Adding new embeddings. " + start_msg;
                 } else {
                     response_dict["message"] = "These embeddings have already been generated!";
                 }
             } else {
                 updateEmbeddingsStatus(embeddingsStatus.RUNNING, sourceCollectionName, destinationCollectionName, fieldName, modelMetadata);
-                if (generateBatchesForModel(graphName, embStatusDict, fieldName, separateCollection, modelMetadata, true)) {
-                    response_dict["message"] = "Overwriting old embeddings. " + start_msg;
-                }
+                shouldEmbed = true;
+                response_dict["message"] = "Overwriting old embeddings. " + start_msg;
             }
             break;
     }
 
-    if (response_dict["message"] === undefined) {
-        updateEmbeddingsStatus(embeddingsStatus.COMPLETED, sourceCollectionName, destinationCollectionName, fieldName, modelMetadata);
-        response_dict["message"] = "Nothing to embed.";
+    if (shouldEmbed) {
+        if (generateBatchesForModel(graphName, newEmbStatusDict, fieldName, separateCollection, modelMetadata, overwriteExisting)) {
+            // NOP
+        } else {
+            updateEmbeddingsStatus(embeddingsStatus.COMPLETED, sourceCollectionName, destinationCollectionName, fieldName, modelMetadata);
+            response_dict["message"] = "Nothing to embed.";
+        }
     }
 
     response_dict["embeddings_status_id"] = getEmbeddingsStatusDocId(sourceCollectionName, destinationCollectionName, fieldName, modelMetadata);
