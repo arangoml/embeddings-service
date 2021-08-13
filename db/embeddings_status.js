@@ -67,8 +67,21 @@ function updateStatusByCollectionDestinationAndEmbName(collectionName, destinati
     `;
 }
 
+function updateEmbeddingsStatusByKey(embeddingsStatusKey, newStatus, timestamp) {
+    const col = db._collection(embeddingsStatusCollectionName);
+    return query`
+    FOR d in ${col}
+        FILTER d._key == ${embeddingsStatusKey}
+        UPDATE d._key WITH {
+            status: ${newStatus},
+            last_run_timestamp: ${timestamp} 
+        } IN ${col} RETURN NEW
+    `.toArray()[0];
+}
+
 exports.getStatusByKey = getStatusByKey;
 exports.getStatusesByCollectionAndEmbName = getStatusesByCollectionAndEmbName;
 exports.getStatusesByCollectionDestinationAndEmbName = getStatusesByCollectionDestinationAndEmbName;
 exports.createStatus = createStatus;
 exports.updateStatusByCollectionDestinationAndEmbName = updateStatusByCollectionDestinationAndEmbName;
+exports.updateEmbeddingsStatusByKey = updateEmbeddingsStatusByKey;
