@@ -168,7 +168,7 @@ function getAndSaveNodeEmbeddingsForMiniBatch(collection, dCollection) {
         const requestData = miniBatch.map(x => x["field"]);
         const res = profileCall(invokeEmbeddingModel)(requestData);
 
-        if (res.status == 200) {
+        if (res.status === 200) {
             logTimeElapsed(res.body);
             const embeddings = profileCall(extractEmbeddingsFromResponse)(res.body, modelMetadata.metadata.emb_dim);
             if (separateCollection) {
