@@ -16,6 +16,7 @@ const embeddingsStatusSchema = {
         "type": "object",
         "properties": {
             "emb_field_name": { "type": "string" },
+            "field_name": { "type": "string" },
             "collection": { "type": "string" },
             "destination_collection": { "type": "string" },
             "status": {
@@ -24,6 +25,7 @@ const embeddingsStatusSchema = {
                     embeddingsStatus.RUNNING_FAILED,
                     embeddingsStatus.FAILED,
                     embeddingsStatus.COMPLETED,
+                    embeddingsStatus.DOES_NOT_EXIST,
                 ]
             },
             "last_run_timestamp": { "type": "string" }

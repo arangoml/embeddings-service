@@ -46,6 +46,7 @@ function createEmbeddingsStatus(collectionName, destinationCollectionName, field
         collectionName,
         destinationCollectionName,
         getEmbeddingsFieldName(fieldName, modelMetadata),
+        fieldName,
         embeddingsStatus.RUNNING,
         new Date().toISOString()
     );
