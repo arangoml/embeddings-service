@@ -1,3 +1,5 @@
+"use strict";
+
 const {embeddingsStatus} = require("../model/embeddings_status");
 const {pruneEmbeddings, getCountDocumentsWithoutEmbedding} = require("../services/emb_collections_service");
 const {updateEmbeddingsStatusDict} = require("../services/emb_status_service");
