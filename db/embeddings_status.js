@@ -39,10 +39,13 @@ function getStatusesByCollectionDestinationAndEmbName(collectionName, destinatio
     `.toArray();
 }
 
-function createStatus(collectionName, destinationCollectionName, embeddingsFieldName, fieldName, status, timestamp) {
+function createStatus(graphName, collectionName, destinationCollectionName, embeddingsFieldName, fieldName, modelMetadata, status, timestamp) {
     const col = db._collection(embeddingsStatusCollectionName);
     return query`
     INSERT {
+        graph_name: ${graphName},
+        model_key: ${modelMetadata._key},
+        model_type: ${modelMetadata.model_type},
         collection: ${collectionName},
         destination_collection: ${destinationCollectionName},
         emb_field_name: ${embeddingsFieldName},

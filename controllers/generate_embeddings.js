@@ -53,7 +53,7 @@ function generateEmbeddings(req, res) {
     }
 
     const destinationCollectionName = profileCall(getDestinationCollectionName)(collectionName, separateCollection, modelMetadata);
-    const embStatusDict = profileCall(getOrCreateEmbeddingsStatusDict)(collectionName, destinationCollectionName, fieldName, modelMetadata);
+    const embStatusDict = profileCall(getOrCreateEmbeddingsStatusDict)(graphName, collectionName, destinationCollectionName, fieldName, modelMetadata);
     const response_dict = profileCall(manageEmbeddingsForDocFieldAndModel)(embStatusDict, graphName, collectionName, fieldName, destinationCollectionName, separateCollection, modelMetadata, overwriteExisting);
     res.json(response_dict);
 }

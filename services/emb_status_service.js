@@ -41,10 +41,10 @@ function getEmbeddingsStatusDict(collectionName, destinationCollectionName, fiel
 /**
  * Get or create embeddings status. New embeddings status will be initialized to DOES_NOT_EXIST
  */
-function getOrCreateEmbeddingsStatusDict(collectionName, destinationCollectionName, fieldName, modelMetadata) {
-    const res = getStatusesByCollectionDestinationAndEmbName(collectionName, destinationCollectionName, getEmbeddingsFieldName(fieldName, modelMetadata))
+function getOrCreateEmbeddingsStatusDict(graphName, collectionName, destinationCollectionName, fieldName, modelMetadata) {
+    const res = getStatusesByCollectionDestinationAndEmbName(collectionName, destinationCollectionName, getEmbeddingsFieldName(fieldName, modelMetadata));
     if (res.length === 0) {
-        return createEmbeddingsStatus(collectionName, destinationCollectionName, fieldName, modelMetadata, embeddingsStatus.DOES_NOT_EXIST);
+        return createEmbeddingsStatus(graphName, collectionName, destinationCollectionName, fieldName, modelMetadata, embeddingsStatus.DOES_NOT_EXIST);
     }
     return res[0];
 }
@@ -52,14 +52,16 @@ function getOrCreateEmbeddingsStatusDict(collectionName, destinationCollectionNa
 /**
  * Create a new status of how the embeddings generation is going.
  */
-function createEmbeddingsStatus(collectionName, destinationCollectionName, fieldName, modelMetadata, startStatus = embeddingsStatus.DOES_NOT_EXIST) {
+function createEmbeddingsStatus(graphName, collectionName, destinationCollectionName, fieldName, modelMetadata, startStatus = embeddingsStatus.DOES_NOT_EXIST) {
     return createStatus(
+        graphName,
         collectionName,
         destinationCollectionName,
         getEmbeddingsFieldName(fieldName, modelMetadata),
         fieldName,
+        modelMetadata,
         startStatus,
-        new Date().toISOString()
+        new Date().toISOString(),
     );
 }
 
