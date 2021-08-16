@@ -41,19 +41,34 @@ function getStatusesByCollectionDestinationAndEmbName(collectionName, destinatio
 
 function createStatus(graphName, collectionName, destinationCollectionName, embeddingsFieldName, fieldName, modelMetadata, status, timestamp) {
     const col = db._collection(embeddingsStatusCollectionName);
-    return query`
-    INSERT {
-        graph_name: ${graphName},
-        model_key: ${modelMetadata._key},
-        model_type: ${modelMetadata.model_type},
-        collection: ${collectionName},
-        destination_collection: ${destinationCollectionName},
-        emb_field_name: ${embeddingsFieldName},
-        field_name: ${fieldName},
-        status: ${status},
-        last_run_timestamp: ${timestamp}
-    } INTO ${col} RETURN NEW
-    `.toArray()[0];
+    if (graphName !== undefined && graphName.length > 0) {
+        return query`
+        INSERT {
+            graph_name: ${graphName},
+            model_key: ${modelMetadata["_key"]},
+            model_type: ${modelMetadata["model_type"]},
+            collection: ${collectionName},
+            destination_collection: ${destinationCollectionName},
+            emb_field_name: ${embeddingsFieldName},
+            field_name: ${fieldName},
+            status: ${status},
+            last_run_timestamp: ${timestamp}
+        } INTO ${col} RETURN NEW
+        `.toArray()[0];
+    } else {
+        return query`
+        INSERT {
+            model_key: ${modelMetadata["_key"]},
+            model_type: ${modelMetadata["model_type"]},
+            collection: ${collectionName},
+            destination_collection: ${destinationCollectionName},
+            emb_field_name: ${embeddingsFieldName},
+            field_name: ${fieldName},
+            status: ${status},
+            last_run_timestamp: ${timestamp}
+        } INTO ${col} RETURN NEW
+        `.toArray()[0];
+    }
 }
 
 function updateStatusByCollectionDestinationAndEmbName(collectionName, destinationCollectionName, embeddingsFieldName, newStatus, timestamp) {

@@ -24,12 +24,13 @@ function createEmbeddingsRunCollection(embeddingsStatusDict) {
     return embeddingsRunCol;
 }
 
-function createAndAddEmbeddingsRunCollectionSameCollection(embeddingsStatusDict, sourceFieldName) {
+function createAndAddEmbeddingsRunCollectionSameCollection(embeddingsStatusDict) {
     // Clear any docs first
     clearEmbeddingsRunCollection(embeddingsStatusDict);
     const embeddingsRunCol = createEmbeddingsRunCollection(embeddingsStatusDict);
     const dCol = db._collection(embeddingsStatusDict["destination_collection"]);
     const embedding_field_name = embeddingsStatusDict["emb_field_name"];
+    const sourceFieldName = embeddingsStatusDict["field_name"];
     query`
         FOR doc in ${dCol}
           FILTER doc.${sourceFieldName} != null
@@ -38,11 +39,12 @@ function createAndAddEmbeddingsRunCollectionSameCollection(embeddingsStatusDict,
     `;
 }
 
-function createAndAddEmbeddingsRunCollectionSeparateCollection(embeddingsStatusDict, sourceFieldName) {
+function createAndAddEmbeddingsRunCollectionSeparateCollection(embeddingsStatusDict) {
     // Clear any docs first
     clearEmbeddingsRunCollection(embeddingsStatusDict);
     const embeddingsRunCol = createEmbeddingsRunCollection(embeddingsStatusDict);
     const sourceCol = db._collection(embeddingsStatusDict["collection"]);
+    const sourceFieldName = embeddingsStatusDict["field_name"];
     const dCol = db._collection(embeddingsStatusDict["destination_collection"]);
     const embedding_field_name = embeddingsStatusDict["emb_field_name"];
     query`
@@ -61,11 +63,12 @@ function createAndAddEmbeddingsRunCollectionSeparateCollection(embeddingsStatusD
     return embeddingsRunCol.name();
 }
 
-function createAndAddEmbeddingsRunCollectionAllValidDocs(embeddingsStatusDict, sourceFieldName) {
+function createAndAddEmbeddingsRunCollectionAllValidDocs(embeddingsStatusDict) {
     // Clear any docs first
     clearEmbeddingsRunCollection(embeddingsStatusDict);
     const embeddingsRunCol = createEmbeddingsRunCollection(embeddingsStatusDict);
     const sourceCol = db._collection(embeddingsStatusDict["collection"]);
+    const sourceFieldName = embeddingsStatusDict["field_name"];
     query`
         FOR doc in ${sourceCol}
           FILTER doc.${sourceFieldName} != null
@@ -74,16 +77,16 @@ function createAndAddEmbeddingsRunCollectionAllValidDocs(embeddingsStatusDict, s
     return embeddingsRunCol.name();
 }
 
-function createAndAddEmbeddingsRunCollection(embeddingsStatusDict, sourceFieldName, overwriteExisting) {
+function createAndAddEmbeddingsRunCollection(embeddingsStatusDict, overwriteExisting) {
     if (overwriteExisting) {
         // here we just add all valid docs!
-        return createAndAddEmbeddingsRunCollectionAllValidDocs(embeddingsStatusDict, sourceFieldName);
+        return createAndAddEmbeddingsRunCollectionAllValidDocs(embeddingsStatusDict);
     }
 
     if (embeddingsStatusDict["destination_collection"] === embeddingsStatusDict["collection"]) {
-        return createAndAddEmbeddingsRunCollectionSameCollection(embeddingsStatusDict, sourceFieldName);
+        return createAndAddEmbeddingsRunCollectionSameCollection(embeddingsStatusDict);
     } else {
-        return createAndAddEmbeddingsRunCollectionSeparateCollection(embeddingsStatusDict, sourceFieldName);
+        return createAndAddEmbeddingsRunCollectionSeparateCollection(embeddingsStatusDict);
     }
 }
 
