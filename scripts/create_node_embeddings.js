@@ -11,6 +11,7 @@ const {getEmbeddingsStatus, updateEmbeddingsStatus} = require("../services/emb_s
 const {queueBatch, scripts} = require("../services/emb_generation_service");
 const {embeddingsStatus} = require("../model/embeddings_status");
 const {EMB_QUEUE_NAME} = require("../utils/embeddings_queue");
+const {embeddingsTargetsAreValid} = require("../utils/embeddings_target");
 
 const {argv} = module.context;
 
@@ -239,4 +240,8 @@ function createNodeEmbeddings() {
     }
 }
 
-profileCall(createNodeEmbeddings)();
+if (!embeddingsTargetsAreValid(null, collectionName)) {
+    logMsg(`Embeddings target collection ${collectionName} is no longer valid. Aborting generation...`);
+} else {
+    profileCall(createNodeEmbeddings)();
+}

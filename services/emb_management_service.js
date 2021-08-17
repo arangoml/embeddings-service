@@ -4,6 +4,7 @@ const {embeddingsStatus} = require("../model/embeddings_status");
 const {pruneEmbeddings, getCountDocumentsWithoutEmbedding} = require("../services/emb_collections_service");
 const {updateEmbeddingsStatusDict} = require("../services/emb_status_service");
 const {generateBatchesForModel} = require("../services/emb_generation_service");
+const {embeddingsTargetsAreValid} = require("../utils/embeddings_target");
 
 function pruneEmbeddingsIfNeeded(embeddingsStatusDict, overwriteExisting) {
     if (!overwriteExisting) {
@@ -63,19 +64,25 @@ function determineGenerationNeededForStatus(embeddingsStatusDict, overwriteExist
 function manageEmbeddingsForDocFieldAndModel(embStatusDict, graphName, modelMetadata, overwriteExisting) {
     let response_dict = {};
 
-    pruneEmbeddingsIfNeeded(embStatusDict, overwriteExisting);
+    // TODO: Decide on behavior if embeddings are no longer valid (e.g. the graph or collection has been deleted)
+    if (embeddingsTargetsAreValid(embStatusDict["graph_name"], embStatusDict["collection"])) {
+        pruneEmbeddingsIfNeeded(embStatusDict, overwriteExisting);
 
-    const {shouldGenerate, message} = determineGenerationNeededForStatus(embStatusDict, overwriteExisting);
-    response_dict["message"] = message;
+        const {shouldGenerate, message} = determineGenerationNeededForStatus(embStatusDict, overwriteExisting);
+        response_dict["message"] = message;
 
-    if (shouldGenerate) {
-        updateEmbeddingsStatusDict(embStatusDict, embeddingsStatus.RUNNING);
-        if (generateBatchesForModel(graphName, embStatusDict, modelMetadata, overwriteExisting)) {
-            // NOP
-        } else {
-            updateEmbeddingsStatusDict(embStatusDict, embeddingsStatus.COMPLETED);
-            response_dict["message"] = "Nothing to embed.";
+        if (shouldGenerate) {
+            updateEmbeddingsStatusDict(embStatusDict, embeddingsStatus.RUNNING);
+            if (generateBatchesForModel(graphName, embStatusDict, modelMetadata, overwriteExisting)) {
+                // NOP
+            } else {
+                updateEmbeddingsStatusDict(embStatusDict, embeddingsStatus.COMPLETED);
+                response_dict["message"] = "Nothing to embed.";
+            }
         }
+    } else {
+        // NOP for now
+        response_dict["message"] = "Target Documents are in an invalid state, please check your DB";
     }
 
     response_dict["embeddings_status_id"] = embStatusDict["_key"];
