@@ -97,9 +97,18 @@ function updateEmbeddingsStatusByKey(embeddingsStatusKey, newStatus, timestamp) 
     `.toArray()[0];
 }
 
+function listEmbeddingsStatuses() {
+    const col = db._collection(embeddingsStatusCollectionName);
+    return query`
+    FOR d in ${col}
+        RETURN d
+    `.toArray();
+}
+
 exports.getStatusByKey = getStatusByKey;
 exports.getStatusesByCollectionAndEmbName = getStatusesByCollectionAndEmbName;
 exports.getStatusesByCollectionDestinationAndEmbName = getStatusesByCollectionDestinationAndEmbName;
 exports.createStatus = createStatus;
 exports.updateStatusByCollectionDestinationAndEmbName = updateStatusByCollectionDestinationAndEmbName;
 exports.updateEmbeddingsStatusByKey = updateEmbeddingsStatusByKey;
+exports.listEmbeddingsStatuses = listEmbeddingsStatuses;

@@ -19,11 +19,27 @@
       "type": "boolean",
       "default": false,
       "description": "Enable log messages"
+    },
+    "enableBackgroundManagement": {
+      "type": "boolean",
+      "default": true,
+      "description": "Enable background management of embeddings (to respond to document changes etc.)"
+    },
+    "enableQueues": {
+      "type": "boolean",
+      "default": true,
+      "description": "If disabled, all background jobs, including generation of embeddings, will be cancelled."
+    },
+    "backgroundManagementInterval": {
+      "type": "number",
+      "default": 7.2e6,
+      "description": "Time (in milliseconds), between background management checks."
     }
   },
   "scripts": {
     "setup": "scripts/setup.js",
     "createNodeEmbeddings": "scripts/create_node_embeddings.js",
-    "createGraphEmbeddings": "scripts/create_graph_embeddings.js"
+    "createGraphEmbeddings": "scripts/create_graph_embeddings.js",
+    "backgroundEmbeddingsManagement": "scripts/manage_embedding_collections.js"
   }
 }

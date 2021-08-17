@@ -3,6 +3,7 @@
 const db = require("@arangodb").db;
 const {modelTypes, metadataCollectionName, modelMetadataSchema} = require("../model/model_metadata");
 const {embeddingsStatusCollectionName, embeddingsStatusSchema}  = require("../model/embeddings_status");
+const {pushManagementQueueJob, getBackgroundManagementQueue} = require("./manage_embedding_collections");
 
 
 function createModelMetadataCollection() {
@@ -103,3 +104,4 @@ function seedMetadataCol(collection) {
 const modelMetadataCol = createModelMetadataCollection();
 seedMetadataCol(modelMetadataCol);
 createEmbeddingsStatusCollection();
+pushManagementQueueJob(getBackgroundManagementQueue());
