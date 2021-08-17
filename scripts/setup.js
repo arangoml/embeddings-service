@@ -3,7 +3,8 @@
 const db = require("@arangodb").db;
 const {modelTypes, metadataCollectionName, modelMetadataSchema} = require("../model/model_metadata");
 const {embeddingsStatusCollectionName, embeddingsStatusSchema}  = require("../model/embeddings_status");
-const {pushManagementQueueJob, getBackgroundManagementQueue} = require("./manage_embedding_collections");
+const {pushManagementQueueJob, getBackgroundManagementQueue} = require("../services/collections_management_service");
+const {logMsg} = require("../utils/logging");
 
 
 function createModelMetadataCollection() {
@@ -101,7 +102,17 @@ function seedMetadataCol(collection) {
     collection.insert(seedData);
 }
 
+function backgroundQueueSize(backQueue) {
+    return backQueue.progress().length + backQueue.pending().length;
+}
+
 const modelMetadataCol = createModelMetadataCollection();
 seedMetadataCol(modelMetadataCol);
 createEmbeddingsStatusCollection();
-pushManagementQueueJob(getBackgroundManagementQueue());
+
+const backQueue = getBackgroundManagementQueue();
+
+if (backgroundQueueSize(backQueue) < 1) {
+    logMsg("starting background embeddings management.");
+    pushManagementQueueJob(backQueue);
+}

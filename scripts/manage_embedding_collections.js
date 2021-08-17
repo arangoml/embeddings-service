@@ -1,8 +1,11 @@
 "use strict";
 
 const {logMsg, logErr} = require("../utils/logging");
-const {rescheduleManagementQueueJob, cancelBackgroundManagementJobs, manageEmbeddingCollections, canManageEmbeddings} = require("../services/collections_management_service");
+const {rescheduleManagementQueueJobIfNeeded, cancelBackgroundManagementJobs, manageEmbeddingCollections, canManageEmbeddings} = require("../services/collections_management_service");
 
+const {argv} = module.context;
+
+const {currentInterval} = argv[0];
 
 if (canManageEmbeddings()) {
     try {
@@ -11,7 +14,7 @@ if (canManageEmbeddings()) {
         logErr("Error occured during embeddings management!");
         logErr(e, e.stack);
     } finally {
-        rescheduleManagementQueueJob();
+        rescheduleManagementQueueJobIfNeeded(currentInterval);
     }
 } else {
     cancelBackgroundManagementJobs();

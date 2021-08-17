@@ -65,7 +65,9 @@ function pushManagementQueueJob(backQueue) {
             mount: context.mount,
             name: BACKGROUND_MANAGEMENT_SCRIPT_NAME
         },
-        {},
+        {
+            currentInterval: intervalInMS
+        },
         {
             delayUntil: Date.now() + intervalInMS,
             repeatTimes: -1,
@@ -74,11 +76,13 @@ function pushManagementQueueJob(backQueue) {
     );
 }
 
-function rescheduleManagementQueueJob() {
-    const backQueue = getBackgroundManagementQueue();
-    // No way to cache previous management interval to compare, so must cancel if successful
-    cancelPendingQueueJobs(backQueue);
-    pushManagementQueueJob(backQueue);
+function rescheduleManagementQueueJobIfNeeded(currentInterval) {
+    if (currentInterval !== context.configuration.backgroundManagementInterval) {
+        console.log("Rescheduling management job")
+        const backQueue = getBackgroundManagementQueue();
+        cancelPendingQueueJobs(backQueue);
+        pushManagementQueueJob(backQueue);
+    }
 }
 
 function canManageEmbeddings() {
@@ -89,5 +93,5 @@ exports.pushManagementQueueJob = pushManagementQueueJob;
 exports.getBackgroundManagementQueue = getBackgroundManagementQueue;
 exports.canManageEmbeddings = canManageEmbeddings;
 exports.manageEmbeddingCollections = manageEmbeddingCollections;
-exports.rescheduleManagementQueueJob = rescheduleManagementQueueJob;
+exports.rescheduleManagementQueueJobIfNeeded = rescheduleManagementQueueJobIfNeeded;
 exports.cancelBackgroundManagementJobs = cancelBackgroundManagementJobs;
