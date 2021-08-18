@@ -1,10 +1,13 @@
 "use strict";
 
+import Collection = ArangoDB.Collection;
+
 const db = require("@arangodb").db;
-const {ModelTypes, metadataCollectionName, modelMetadataSchema} = require("../model/model_metadata");
-const {embeddingsStatusCollectionName, embeddingsStatusSchema}  = require("../model/embeddings_status");
-const {pushManagementQueueJob, getBackgroundManagementQueue} = require("../services/collections_management_service");
-const {logMsg} = require("../utils/logging");
+import {ModelTypes, metadataCollectionName, modelMetadataSchema} from "../model/model_metadata";
+import {embeddingsStatusCollectionName, embeddingsStatusSchema} from "../model/embeddings_status";
+import {pushManagementQueueJob, getBackgroundManagementQueue} from "../services/collections_management_service";
+import {logMsg} from "../utils/logging";
+import {Queue} from "@arangodb/foxx/queues";
 
 
 function createModelMetadataCollection() {
@@ -98,11 +101,11 @@ const seedData = [
     }
 ];
 
-function seedMetadataCol(collection) {
+function seedMetadataCol(collection: Collection): void {
     collection.insert(seedData);
 }
 
-function backgroundQueueSize(backQueue) {
+function backgroundQueueSize(backQueue: Queue): number {
     return backQueue.progress().length + backQueue.pending().length;
 }
 

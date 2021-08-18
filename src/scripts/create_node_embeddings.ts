@@ -1,26 +1,48 @@
 "use strict";
-const {query, db} = require("@arangodb");
+import Collection = ArangoDB.Collection;
+
 const request = require("@arangodb/request");
-const {profileCall} = require("../utils/profiling");
-const {context} = require("@arangodb/locals");
 const queues = require("@arangodb/foxx/queues");
-const {logErr} = require("../utils/logging");
-const {logMsg} = require("../utils/logging");
-const {getEmbeddingsFieldName, deleteEmbeddingsFieldEntries} = require("../services/emb_collections_service");
-const {getEmbeddingsStatus, updateEmbeddingsStatus} = require("../services/emb_status_service");
-const {queueBatch, ScriptName} = require("../services/emb_generation_service");
-const {EmbeddingsStatus} = require("../model/embeddings_status");
-const {EMB_QUEUE_NAME} = require("../utils/embeddings_queue");
-const {embeddingsTargetsAreValid} = require("../utils/embeddings_target");
+import {query, db} from "@arangodb";
+import {profileCall} from "../utils/profiling";
+import {context} from "@arangodb/locals";
+import {logErr} from "../utils/logging";
+import {logMsg} from "../utils/logging";
+import {getEmbeddingsFieldName} from "../services/emb_collections_service";
+import {getEmbeddingsStatus, updateEmbeddingsStatus} from "../services/emb_status_service";
+import {queueBatch, ScriptName} from "../services/emb_generation_service";
+import {EmbeddingsStatus} from "../model/embeddings_status";
+import {EMB_QUEUE_NAME} from "../utils/embeddings_queue";
+import {embeddingsTargetsAreValid} from "../utils/embeddings_target";
+import {ModelMetadata} from "../model/model_metadata";
 
 const {argv} = module.context;
 
-const {batchIndex, batchSize, numberOfBatches, batchOffset, collectionName, modelMetadata, fieldName, destinationCollection, separateCollection, embeddingsRunColName} = argv[0];
+interface GenerationJobInputArgs {
+    graphName: string;
+    batchIndex: number;
+    batchSize: number;
+    numberOfBatches: number;
+    batchOffset: number;
+    collectionName: string;
+    modelMetadata: ModelMetadata;
+    fieldName: string;
+    destinationCollection: string;
+    separateCollection: boolean;
+    embeddingsRunColName: string;
+};
+
+const {batchIndex, batchSize, numberOfBatches, batchOffset, collectionName, modelMetadata, fieldName, destinationCollection, separateCollection, embeddingsRunColName}: GenerationJobInputArgs = argv[0];
 const isLastBatch = (batchIndex >= (numberOfBatches - 1));
 
 const MAX_RETRIES = 5;
 
-function getDocumentsToEmbed(nDocs, startInd, docCollection, embeddingsRunCol, fieldToEmbed) {
+interface TargetDocument {
+    _key: string;
+    field: any
+};
+
+function getDocumentsToEmbed(nDocs: number, startInd: number, docCollection: Collection, embeddingsRunCol: Collection, fieldToEmbed: string): TargetDocument[] {
     return query`
         FOR embRunDoc in ${embeddingsRunCol}
             LIMIT ${startInd}, ${nDocs}
@@ -34,7 +56,7 @@ function getDocumentsToEmbed(nDocs, startInd, docCollection, embeddingsRunCol, f
     `.toArray();
 }
 
-function formatBatch(batchData) {
+function formatBatch(batchData: any[]) {
     return {
         inputs: [
             {
@@ -47,7 +69,7 @@ function formatBatch(batchData) {
     };
 }
 
-function invokeEmbeddingModel(dataToEmbed) {
+function invokeEmbeddingModel(dataToEmbed: any[]) {
     const embeddingsServiceUrl = `${context.configuration.embeddingService}/v2/models/${modelMetadata.invocation_name}/infer`;
     let tries = 0;
     let res = {"status": -1};
@@ -67,33 +89,33 @@ function invokeEmbeddingModel(dataToEmbed) {
     return res;
 }
 
-function chunkArray(array, chunk_size) {
+function chunkArray(array: any[], chunk_size: number) {
     return Array(Math.ceil(array.length / chunk_size))
-        .fill()
+        .fill(0)
         .map((_, i) => i * chunk_size)
         .map(begin => array.slice(begin, begin + chunk_size));
 }
 
-function extractEmbeddingsFromResponse(response_json, embedding_dim) {
+function extractEmbeddingsFromResponse(response_json: any, embedding_dim: number) {
     // N.B. this is brittle, do output formats differ per model?
     const output = JSON.parse(response_json);
     const giant_arr = output["outputs"][0]["data"];
     return chunkArray(giant_arr, embedding_dim);
 }
 
-function logTimeElapsed(response_json) {
+function logTimeElapsed(response_json: any) {
     if (context.configuration.enableProfiling === false) {
         return;
     }
     const output = JSON.parse(response_json);
     output["outputs"]
-        .filter(e => e["name"].startsWith("TIME"))
-        .forEach(e => {
+        .filter((e: any) => e["name"].startsWith("TIME"))
+        .forEach((e: any) => {
             logMsg(`Model call ${e["name"]} on compute node took ${e["data"]} ms`);
         });
 }
 
-function insertEmbeddingsIntoDBSameCollection(docsWithKey, calculatedEmbeddings, fieldName, collection, modelMetadata) {
+function insertEmbeddingsIntoDBSameCollection(docsWithKey: TargetDocument[], calculatedEmbeddings: number[][], fieldName: string, collection: Collection, modelMetadata: ModelMetadata) {
     const docs = docsWithKey.map((x, i) => {
         return {
             "_key": x["_key"],
@@ -116,7 +138,7 @@ function insertEmbeddingsIntoDBSameCollection(docsWithKey, calculatedEmbeddings,
     `
 }
 
-function insertEmbeddingsIntoDBSepCollection(docsWithKey, calculatedEmbeddings, fieldName, dCollection, modelMetadata) {
+function insertEmbeddingsIntoDBSepCollection(docsWithKey: TargetDocument[], calculatedEmbeddings: number[][], fieldName: string, dCollection: Collection, modelMetadata: ModelMetadata) {
     const docs = docsWithKey.map((x, i) => {
         return {
             "_key": x["_key"],
@@ -147,17 +169,9 @@ function insertEmbeddingsIntoDBSepCollection(docsWithKey, calculatedEmbeddings, 
     `;
 }
 
-
-function rollbackGeneratedEmbeddings(destinationCollectionName, fieldName, modelMetadata) {
-    logMsg("Rolling back existing embeddings");
-    deleteEmbeddingsFieldEntries(destinationCollectionName, fieldName, modelMetadata);
-}
-
-function handleFailure(currentBatchFailed, isTheLastBatch, collectionName, destinationCollectionName, fieldName, modelMetadata) {
+function handleFailure(currentBatchFailed: boolean, isTheLastBatch: boolean, collectionName: string, destinationCollectionName: string, fieldName: string, modelMetadata: ModelMetadata): void {
     if (currentBatchFailed) {
         updateEmbeddingsStatus(EmbeddingsStatus.RUNNING_FAILED, collectionName, destinationCollectionName, fieldName, modelMetadata);
-        // Disabled to enable partial loads
-        // rollbackGeneratedEmbeddings(destinationCollectionName, fieldName, modelMetadata);
     }
 
     if (isTheLastBatch) {
@@ -165,9 +179,9 @@ function handleFailure(currentBatchFailed, isTheLastBatch, collectionName, desti
     }
 }
 
-function getAndSaveNodeEmbeddingsForMiniBatch(collection, dCollection) {
-    return function (miniBatch) {
-        const requestData = miniBatch.map(x => x["field"]);
+function getAndSaveNodeEmbeddingsForMiniBatch(collection: Collection, dCollection: Collection): (miniBatch: TargetDocument[]) => void {
+    return function (miniBatch: TargetDocument[]) {
+        const requestData = miniBatch.map(x => x.field);
         const res = profileCall(invokeEmbeddingModel)(requestData);
 
         if (res.status === 200) {
@@ -185,7 +199,7 @@ function getAndSaveNodeEmbeddingsForMiniBatch(collection, dCollection) {
     }
 }
 
-function createNodeEmbeddings() {
+function createNodeEmbeddings(): void {
     try {
         // Actual processing done here
         logMsg(`Create embeddings for batch ${batchIndex} of size ${batchSize} in collection ${collectionName} using ${modelMetadata.name} on the ${fieldName} field`);

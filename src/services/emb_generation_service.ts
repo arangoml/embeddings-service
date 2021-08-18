@@ -21,7 +21,7 @@ export function queueBatch(
     batchSize: number,
     numBatches: number,
     batchOffset: number,
-    graphName: string | undefined,
+    graphName: string | undefined | null,
     colName: string,
     fieldName: string,
     modelMetadata: ModelMetadata,

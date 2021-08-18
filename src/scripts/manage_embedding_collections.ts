@@ -1,7 +1,7 @@
 "use strict";
 
-const {logMsg, logErr} = require("../utils/logging");
-const {rescheduleManagementQueueJobIfNeeded, cancelBackgroundManagementJobs, manageEmbeddingCollections, canManageEmbeddings} = require("../services/collections_management_service");
+import {logMsg, logErr} from "../utils/logging";
+import {rescheduleManagementQueueJobIfNeeded, cancelBackgroundManagementJobs, manageEmbeddingCollections, canManageEmbeddings} from "../services/collections_management_service";
 
 const {argv} = module.context;
 
