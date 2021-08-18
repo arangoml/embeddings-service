@@ -2,10 +2,10 @@
  * This module is responsible for queries interacting with the Embeddings status metadata collection
  */
 "use strict";
-const {query, db} = require("@arangodb");
-const {embeddingsStatusCollectionName} = require("../model/embeddings_status");
+import {query, db} from "@arangodb";
+import {EmbeddingsStatus, embeddingsStatusCollectionName} from "../model/embeddings_status";
 
-function getStatusByKey(key) {
+export function getStatusByKey(key: string) {
     const col = db._collection(embeddingsStatusCollectionName);
     const statuses = query`
     FOR d in ${col}
@@ -18,7 +18,7 @@ function getStatusByKey(key) {
     return statuses[0];
 }
 
-function getStatusesByCollectionAndEmbName(collectionName, embeddingsFieldName) {
+export function getStatusesByCollectionAndEmbName(collectionName: string, embeddingsFieldName: string) {
     const col = db._collection(embeddingsStatusCollectionName);
     return query`
     FOR d in ${col}
@@ -28,7 +28,7 @@ function getStatusesByCollectionAndEmbName(collectionName, embeddingsFieldName) 
     `.toArray();
 }
 
-function getStatusesByCollectionDestinationAndEmbName(collectionName, destinationCollectionName, embeddingsFieldName) {
+export function getStatusesByCollectionDestinationAndEmbName(collectionName: string, destinationCollectionName: string, embeddingsFieldName: string) {
     const col = db._collection(embeddingsStatusCollectionName);
     return query`
     FOR d in ${col}
@@ -39,7 +39,8 @@ function getStatusesByCollectionDestinationAndEmbName(collectionName, destinatio
     `.toArray();
 }
 
-function createStatus(graphName, collectionName, destinationCollectionName, embeddingsFieldName, fieldName, modelMetadata, status, timestamp) {
+// TODO: Remove Any from signature
+export function createStatus(graphName: string, collectionName: string, destinationCollectionName: string, embeddingsFieldName: string, fieldName: string, modelMetadata: any, status: EmbeddingsStatus, timestamp: number) {
     const col = db._collection(embeddingsStatusCollectionName);
     if (graphName !== undefined && graphName.length > 0) {
         return query`
@@ -71,7 +72,7 @@ function createStatus(graphName, collectionName, destinationCollectionName, embe
     }
 }
 
-function updateStatusByCollectionDestinationAndEmbName(collectionName, destinationCollectionName, embeddingsFieldName, newStatus, timestamp) {
+export function updateStatusByCollectionDestinationAndEmbName(collectionName: string, destinationCollectionName: string, embeddingsFieldName: string, newStatus: EmbeddingsStatus, timestamp: number) {
     const col = db._collection(embeddingsStatusCollectionName);
     query`
     FOR d in ${col}
@@ -85,7 +86,7 @@ function updateStatusByCollectionDestinationAndEmbName(collectionName, destinati
     `;
 }
 
-function updateEmbeddingsStatusByKey(embeddingsStatusKey, newStatus, timestamp) {
+export function updateEmbeddingsStatusByKey(embeddingsStatusKey: string, newStatus: EmbeddingsStatus, timestamp: number) {
     const col = db._collection(embeddingsStatusCollectionName);
     return query`
     FOR d in ${col}
@@ -97,18 +98,10 @@ function updateEmbeddingsStatusByKey(embeddingsStatusKey, newStatus, timestamp) 
     `.toArray()[0];
 }
 
-function listEmbeddingsStatuses() {
+export function listEmbeddingsStatuses() {
     const col = db._collection(embeddingsStatusCollectionName);
     return query`
     FOR d in ${col}
         RETURN d
     `.toArray();
 }
-
-exports.getStatusByKey = getStatusByKey;
-exports.getStatusesByCollectionAndEmbName = getStatusesByCollectionAndEmbName;
-exports.getStatusesByCollectionDestinationAndEmbName = getStatusesByCollectionDestinationAndEmbName;
-exports.createStatus = createStatus;
-exports.updateStatusByCollectionDestinationAndEmbName = updateStatusByCollectionDestinationAndEmbName;
-exports.updateEmbeddingsStatusByKey = updateEmbeddingsStatusByKey;
-exports.listEmbeddingsStatuses = listEmbeddingsStatuses;
