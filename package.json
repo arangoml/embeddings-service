@@ -15,5 +15,11 @@
     "@types/arangodb": "^3.5.13",
     "@types/joi": "^14.3.1"
   },
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "typescript": "^4.3.5"
+  },
+  "scripts": {
+    "compile": "tsc && cp ./src/manifest.json ./build/"
+  }
 }
