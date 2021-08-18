@@ -1,19 +1,19 @@
 "use strict";
 
-const {context} = require("@arangodb/locals");
+import {context} from "@arangodb/locals";
 
-const METADATA_DOC_COLLECTION = context.collectionName("_model_metadata");
+export const metadataCollectionName = context.collectionName("_model_metadata");
 
-const modelTypes = {
-    WORD_EMBEDDING: "word_embedding_model",
-    GRAPH_MODEL: "graph_embedding_model"
+export enum ModelTypes {
+    WORD_EMBEDDING = "word_embedding_model",
+    GRAPH_MODEL = "graph_embedding_model"
 };
 
-const modelMetadataSchema = {
+export const modelMetadataSchema = {
     rule: {
         "type": "object",
         "properties": {
-            "model_type": { "enum": [modelTypes.WORD_EMBEDDING, modelTypes.GRAPH_MODEL] },
+            "model_type": { "enum": [ModelTypes.WORD_EMBEDDING, ModelTypes.GRAPH_MODEL] },
             "name": { "type": "string" },
             "invocation_name": { "type": "string" },
             "framework": {
@@ -86,8 +86,3 @@ const modelMetadataSchema = {
     level: "moderate",
     message: "The model's metadata is invalid"
 };
-
-
-exports.modelTypes = modelTypes;
-exports.metadataCollectionName = METADATA_DOC_COLLECTION;
-exports.modelMetadataSchema = modelMetadataSchema;

@@ -2,7 +2,7 @@
 
 const {getOrCreateEmbeddingsStatusDict} = require("../services/emb_status_service");
 const {checkCollectionIsPresent, checkGraphIsPresent} = require("../utils/db");
-const {modelTypes} = require("../model/model_metadata");
+const {ModelTypes} = require("../model/model_metadata");
 const {sendInvalidInputMessage} = require("../utils/invalid_input");
 const {retrieveModel} = require("../services/model_metadata_service");
 const {getDestinationCollectionName} = require("../services/emb_collections_service");
@@ -11,9 +11,9 @@ const {manageEmbeddingsForDocFieldAndModel} = require("../services/emb_managemen
 
 function initialValidationGenerateEmbParams(req, res) {
     // check if model type is valid
-    if (!Object.values(modelTypes).some(v => v === req.body.modelType)) {
+    if (!Object.values(ModelTypes).some(v => v === req.body.modelType)) {
         sendInvalidInputMessage(res,
-            `Invalid model type: ${req.body.modelType}, expected one of ${Object.values(modelTypes)}`);
+            `Invalid model type: ${req.body.modelType}, expected one of ${Object.values(ModelTypes)}`);
     }
 
     // either but not both on collection

@@ -1,7 +1,7 @@
 "use strict";
 
 const db = require("@arangodb").db;
-const {modelTypes, metadataCollectionName, modelMetadataSchema} = require("../model/model_metadata");
+const {ModelTypes, metadataCollectionName, modelMetadataSchema} = require("../model/model_metadata");
 const {embeddingsStatusCollectionName, embeddingsStatusSchema}  = require("../model/embeddings_status");
 const {pushManagementQueueJob, getBackgroundManagementQueue} = require("../services/collections_management_service");
 const {logMsg} = require("../utils/logging");
@@ -23,7 +23,7 @@ function createEmbeddingsStatusCollection() {
 
 const seedData = [
     {
-        model_type: modelTypes.WORD_EMBEDDING,
+        model_type: ModelTypes.WORD_EMBEDDING,
         name: "paraphrase-mpnet-base-v2",
         _key: "paraphrase-mpnet-base-v2",
         framework: {
@@ -55,7 +55,7 @@ const seedData = [
         }
     },
     {
-        model_type: modelTypes.GRAPH_MODEL,
+        model_type: ModelTypes.GRAPH_MODEL,
         name: "graph-sage",
         _key: "graph-sage",
         framework: {

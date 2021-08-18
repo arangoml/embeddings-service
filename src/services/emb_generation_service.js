@@ -3,7 +3,7 @@
 const {context} = require("@arangodb/locals");
 const queues = require("@arangodb/foxx/queues");
 const {getCountEmbeddingsRunCollection, clearEmbeddingsRunCollection, createAndAddEmbeddingsRunCollection} = require("./embeddings_run_service");
-const {modelTypes} = require("../model/model_metadata");
+const {ModelTypes} = require("../model/model_metadata");
 const {EMB_QUEUE_NAME} = require("../utils/embeddings_queue");
 
 const embeddingQueueName = EMB_QUEUE_NAME;
@@ -76,10 +76,10 @@ function generateBatches(scriptType, embeddingsStatusDict, modelMetadata, overwr
 
 function generateBatchesForModel(embeddingsStatusDict, modelMetadata, overwriteExisting = false) {
     switch (modelMetadata.model_type) {
-        case modelTypes.WORD_EMBEDDING: {
+        case ModelTypes.WORD_EMBEDDING: {
             return generateBatches(scripts.NODE, embeddingsStatusDict, modelMetadata, overwriteExisting);
         }
-        case modelTypes.GRAPH_MODEL: {
+        case ModelTypes.GRAPH_MODEL: {
             if (!graphName) {
                 throw new Error("Requested to generate graph embeddings but no graph is provided");
             }

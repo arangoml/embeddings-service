@@ -1,7 +1,7 @@
 "use strict";
 
 import {context} from "@arangodb/locals";
-import {modelTypes} from "./model_metadata";
+import {ModelTypes} from "./model_metadata";
 
 export enum EmbeddingsStatus {
     RUNNING= "running",
@@ -19,7 +19,7 @@ export const embeddingsStatusSchema = {
             "graph_name": { "type": "string" },
             "model_key": { "type": "string" },
             "model_type": {
-                "enum": Object.values(modelTypes)
+                "enum": Object.values(ModelTypes)
             },
             "emb_field_name": { "type": "string" },
             "field_name": { "type": "string" },

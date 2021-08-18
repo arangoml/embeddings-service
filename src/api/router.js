@@ -5,7 +5,7 @@ const joi = require("joi");
 const {listModels} = require("../controllers/list_models");
 const {generateEmbeddings} = require("../controllers/generate_embeddings");
 const {embeddingsStatusesForModel, embeddingsStatusById} = require("../controllers/embeddings_status");
-const {modelTypes} = require("../model/model_metadata");
+const {ModelTypes} = require("../model/model_metadata");
 
 const router = createRouter();
 
@@ -13,7 +13,7 @@ router.post("/generate_embeddings", generateEmbeddings)
     .body(
         joi.object({
             modelName: joi.string().required(),
-            modelType: joi.string().required().allow(Object.values(modelTypes)),
+            modelType: joi.string().required().allow(Object.values(ModelTypes)),
             // should pick either one of these, but not both
             collectionName: joi.string().required(),
             graphName: joi.string(),
@@ -35,7 +35,7 @@ router.post("/generate_embeddings", generateEmbeddings)
          You will need to provide the name and type of an embedding model (available models can be listed using the \`/models\` endpoint.
          Body required:
          \`modelName\`: name of the model
-         \`modelType\`: type of the model. Currently supported: ${Object.values(modelTypes).map(v => `\`${v}\``)}
+         \`modelType\`: type of the model. Currently supported: ${Object.values(ModelTypes).map(v => `\`${v}\``)}
          \`collectionName\`: name of the collection that you want to embed
          \`graphName\`: name of the graph that you want to embed (please note: not required if generating node specific features e.g. word embeddings)
          \`fieldName\`: name of the field to embed. For graph embeddings this is a feature vector, for word embeddings this is a string.
