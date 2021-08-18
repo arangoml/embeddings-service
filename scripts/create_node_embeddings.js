@@ -26,6 +26,7 @@ function getDocumentsToEmbed(nDocs, startInd, docCollection, embeddingsRunCol, f
             LIMIT ${startInd}, ${nDocs}
             FOR doc in ${docCollection}
                 FILTER embRunDoc._key == doc._key
+                FILTER doc.${fieldToEmbed} != null
                 RETURN {
                   "_key": doc._key,
                   "field": doc.${fieldToEmbed}
