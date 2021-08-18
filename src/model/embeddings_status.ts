@@ -3,6 +3,19 @@
 import {context} from "@arangodb/locals";
 import {ModelTypes} from "./model_metadata";
 
+export interface EmbeddingsState {
+    graph_name?: string;
+    model_key: string;
+    model_type: ModelTypes;
+    emb_field_name: string;
+    field_name: string;
+    collection: string;
+    destination_collection: string;
+    status: EmbeddingsStatus;
+    last_run_timestamp: string;
+    _key: string;
+};
+
 export enum EmbeddingsStatus {
     RUNNING= "running",
     RUNNING_FAILED = "running_failed",

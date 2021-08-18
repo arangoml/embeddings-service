@@ -3,7 +3,7 @@
  */
 "use strict";
 import {query, db} from "@arangodb";
-import {EmbeddingsStatus, embeddingsStatusCollectionName} from "../model/embeddings_status";
+import {EmbeddingsState, EmbeddingsStatus, embeddingsStatusCollectionName} from "../model/embeddings_status";
 
 export function getStatusByKey(key: string) {
     const col = db._collection(embeddingsStatusCollectionName);
@@ -18,7 +18,7 @@ export function getStatusByKey(key: string) {
     return statuses[0];
 }
 
-export function getStatusesByCollectionAndEmbName(collectionName: string, embeddingsFieldName: string) {
+export function getStatusesByCollectionAndEmbName(collectionName: string, embeddingsFieldName: string): EmbeddingsState[] {
     const col = db._collection(embeddingsStatusCollectionName);
     return query`
     FOR d in ${col}
@@ -28,7 +28,7 @@ export function getStatusesByCollectionAndEmbName(collectionName: string, embedd
     `.toArray();
 }
 
-export function getStatusesByCollectionDestinationAndEmbName(collectionName: string, destinationCollectionName: string, embeddingsFieldName: string) {
+export function getStatusesByCollectionDestinationAndEmbName(collectionName: string, destinationCollectionName: string, embeddingsFieldName: string): EmbeddingsState[] {
     const col = db._collection(embeddingsStatusCollectionName);
     return query`
     FOR d in ${col}
@@ -40,7 +40,7 @@ export function getStatusesByCollectionDestinationAndEmbName(collectionName: str
 }
 
 // TODO: Remove Any from signature
-export function createStatus(graphName: string, collectionName: string, destinationCollectionName: string, embeddingsFieldName: string, fieldName: string, modelMetadata: any, status: EmbeddingsStatus, timestamp: number) {
+export function createStatus(graphName: string, collectionName: string, destinationCollectionName: string, embeddingsFieldName: string, fieldName: string, modelMetadata: any, status: EmbeddingsStatus, timestamp: string): EmbeddingsState {
     const col = db._collection(embeddingsStatusCollectionName);
     if (graphName !== undefined && graphName.length > 0) {
         return query`
@@ -72,7 +72,7 @@ export function createStatus(graphName: string, collectionName: string, destinat
     }
 }
 
-export function updateStatusByCollectionDestinationAndEmbName(collectionName: string, destinationCollectionName: string, embeddingsFieldName: string, newStatus: EmbeddingsStatus, timestamp: number) {
+export function updateStatusByCollectionDestinationAndEmbName(collectionName: string, destinationCollectionName: string, embeddingsFieldName: string, newStatus: EmbeddingsStatus, timestamp: string): void {
     const col = db._collection(embeddingsStatusCollectionName);
     query`
     FOR d in ${col}
@@ -86,7 +86,7 @@ export function updateStatusByCollectionDestinationAndEmbName(collectionName: st
     `;
 }
 
-export function updateEmbeddingsStatusByKey(embeddingsStatusKey: string, newStatus: EmbeddingsStatus, timestamp: number) {
+export function updateEmbeddingsStatusByKey(embeddingsStatusKey: string, newStatus: EmbeddingsStatus, timestamp: string): EmbeddingsState {
     const col = db._collection(embeddingsStatusCollectionName);
     return query`
     FOR d in ${col}
@@ -98,7 +98,7 @@ export function updateEmbeddingsStatusByKey(embeddingsStatusKey: string, newStat
     `.toArray()[0];
 }
 
-export function listEmbeddingsStatuses() {
+export function listEmbeddingsStatuses(): EmbeddingsState[] {
     const col = db._collection(embeddingsStatusCollectionName);
     return query`
     FOR d in ${col}

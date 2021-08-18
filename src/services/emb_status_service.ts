@@ -1,14 +1,15 @@
 "use strict";
-const {updateStatusByCollectionDestinationAndEmbName, updateEmbeddingsStatusByKey} = require("../db/embeddings_status");
-const {createStatus} = require("../db/embeddings_status");
-const {getStatusesByCollectionDestinationAndEmbName} = require("../db/embeddings_status");
-const {getEmbeddingsFieldName} = require("./emb_collections_service");
-const {EmbeddingsStatus} = require("../model/embeddings_status");
+import {updateStatusByCollectionDestinationAndEmbName, updateEmbeddingsStatusByKey} from "../db/embeddings_status";
+import {createStatus} from "../db/embeddings_status";
+import {getStatusesByCollectionDestinationAndEmbName} from "../db/embeddings_status";
+import {getEmbeddingsFieldName} from "./emb_collections_service";
+import {EmbeddingsStatus, EmbeddingsState} from "../model/embeddings_status";
 
 /**
  * Get the status of how the embeddings generation is going.
  */
-function getEmbeddingsStatus(collectionName, destinationCollectionName, fieldName, modelMetadata) {
+// TODO: Replace any type
+export function getEmbeddingsStatus(collectionName: string, destinationCollectionName: string, fieldName: string, modelMetadata: any): EmbeddingsStatus {
     const res = getStatusesByCollectionDestinationAndEmbName(collectionName, destinationCollectionName, getEmbeddingsFieldName(fieldName, modelMetadata))
     if (res.length === 0) {
         return EmbeddingsStatus.DOES_NOT_EXIST;
@@ -17,23 +18,25 @@ function getEmbeddingsStatus(collectionName, destinationCollectionName, fieldNam
 }
 
 /**
- * Get the document ID of an embedding status. Returns `null` if not found.
+ * Get the document ID of an embedding status. Returns `undefined` if not found.
  */
-function getEmbeddingsStatusDocId(collectionName, destinationCollectionName, fieldName, modelMetadata) {
+// TODO: Replace any type + undefined
+export function getEmbeddingsStatusDocId(collectionName: string, destinationCollectionName: string, fieldName: string, modelMetadata: any): string | undefined {
     const res = getStatusesByCollectionDestinationAndEmbName(collectionName, destinationCollectionName, getEmbeddingsFieldName(fieldName, modelMetadata))
     if (res.length === 0) {
-        return null;
+        return undefined;
     }
     return res[0]["_key"];
 }
 
 /**
- * Get the entire embedding status entry. Returns `null` if not found
+ * Get the entire embedding status entry. Returns `undefined` if not found
  */
-function getEmbeddingsStatusDict(collectionName, destinationCollectionName, fieldName, modelMetadata) {
+// TODO: Replace any type + undefined
+export function getEmbeddingsStatusDict(collectionName: string, destinationCollectionName: string, fieldName: string, modelMetadata: any): EmbeddingsState | undefined {
     const res = getStatusesByCollectionDestinationAndEmbName(collectionName, destinationCollectionName, getEmbeddingsFieldName(fieldName, modelMetadata))
     if (res.length === 0) {
-        return null;
+        return undefined;
     }
     return res[0];
 }
@@ -41,7 +44,8 @@ function getEmbeddingsStatusDict(collectionName, destinationCollectionName, fiel
 /**
  * Get or create embeddings status. New embeddings status will be initialized to DOES_NOT_EXIST
  */
-function getOrCreateEmbeddingsStatusDict(graphName, collectionName, destinationCollectionName, fieldName, modelMetadata) {
+// TODO: Replace any type
+export function getOrCreateEmbeddingsStatusDict(graphName: string, collectionName: string, destinationCollectionName: string, fieldName: string, modelMetadata: any): EmbeddingsState {
     const res = getStatusesByCollectionDestinationAndEmbName(collectionName, destinationCollectionName, getEmbeddingsFieldName(fieldName, modelMetadata));
     if (res.length === 0) {
         return createEmbeddingsStatus(graphName, collectionName, destinationCollectionName, fieldName, modelMetadata, EmbeddingsStatus.DOES_NOT_EXIST);
@@ -52,7 +56,8 @@ function getOrCreateEmbeddingsStatusDict(graphName, collectionName, destinationC
 /**
  * Create a new status of how the embeddings generation is going.
  */
-function createEmbeddingsStatus(graphName, collectionName, destinationCollectionName, fieldName, modelMetadata, startStatus = EmbeddingsStatus.DOES_NOT_EXIST) {
+// TODO: Replace any type
+export function createEmbeddingsStatus(graphName: string, collectionName: string, destinationCollectionName: string, fieldName: string, modelMetadata: any, startStatus = EmbeddingsStatus.DOES_NOT_EXIST): EmbeddingsState {
     return createStatus(
         graphName,
         collectionName,
@@ -68,7 +73,8 @@ function createEmbeddingsStatus(graphName, collectionName, destinationCollection
 /**
  * Update the status of how the embeddings generation is going.
  */
-function updateEmbeddingsStatus(newStatus, collectionName, destinationCollectionName, fieldName, modelMetadata) {
+// TODO: Replace any type
+export function updateEmbeddingsStatus(newStatus: EmbeddingsStatus, collectionName: string, destinationCollectionName: string, fieldName: string, modelMetadata: any): void {
     updateStatusByCollectionDestinationAndEmbName(
         collectionName,
         destinationCollectionName,
@@ -83,18 +89,10 @@ function updateEmbeddingsStatus(newStatus, collectionName, destinationCollection
  * @param embeddingsStatusDict
  * @param newStatus
  */
-function updateEmbeddingsStatusDict(embeddingsStatusDict, newStatus) {
+export function updateEmbeddingsStatusDict(embeddingsStatusDict: EmbeddingsState, newStatus: EmbeddingsStatus): void {
     updateEmbeddingsStatusByKey(
-        embeddingsStatusDict["_key"],
+        embeddingsStatusDict._key,
         newStatus,
         new Date().toISOString()
     )
 }
-
-exports.getEmbeddingsStatus = getEmbeddingsStatus;
-exports.getEmbeddingsStatusDocId = getEmbeddingsStatusDocId;
-exports.createEmbeddingsStatus = createEmbeddingsStatus;
-exports.updateEmbeddingsStatus = updateEmbeddingsStatus;
-exports.getEmbeddingsStatusDict = getEmbeddingsStatusDict;
-exports.getOrCreateEmbeddingsStatusDict = getOrCreateEmbeddingsStatusDict;
-exports.updateEmbeddingsStatusDict = updateEmbeddingsStatusDict;
