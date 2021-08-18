@@ -5,7 +5,7 @@ const {context} = require("@arangodb/locals");
 const {getModelByKey} = require("../services/model_metadata_service");
 const {logMsg} = require("../utils/logging");
 const {manageEmbeddingsForDocFieldAndModel} = require("../services/emb_management_service");
-const {embeddingsStatus} = require("../model/embeddings_status");
+const {EmbeddingsStatus} = require("../model/embeddings_status");
 const {listEmbeddingsStatuses} = require("../db/embeddings_status");
 
 const BACKGROUND_MANAGEMENT_QUEUE_NAME = "background_management_queue";
@@ -27,8 +27,8 @@ function manageEmbeddingsForStatusDict(embeddingsStatusDict) {
 function shouldManageEmbeddingsStatus(embeddingsStatusDict) {
     switch (embeddingsStatusDict["status"]) {
         // Only update embeddings that are completed
-        case embeddingsStatus.COMPLETED:
-        case embeddingsStatus.FAILED:
+        case EmbeddingsStatus.COMPLETED:
+        case EmbeddingsStatus.FAILED:
             return true;
         default:
             return false;

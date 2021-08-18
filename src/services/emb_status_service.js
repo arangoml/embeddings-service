@@ -3,7 +3,7 @@ const {updateStatusByCollectionDestinationAndEmbName, updateEmbeddingsStatusByKe
 const {createStatus} = require("../db/embeddings_status");
 const {getStatusesByCollectionDestinationAndEmbName} = require("../db/embeddings_status");
 const {getEmbeddingsFieldName} = require("./emb_collections_service");
-const {embeddingsStatus} = require("../model/embeddings_status");
+const {EmbeddingsStatus} = require("../model/embeddings_status");
 
 /**
  * Get the status of how the embeddings generation is going.
@@ -11,7 +11,7 @@ const {embeddingsStatus} = require("../model/embeddings_status");
 function getEmbeddingsStatus(collectionName, destinationCollectionName, fieldName, modelMetadata) {
     const res = getStatusesByCollectionDestinationAndEmbName(collectionName, destinationCollectionName, getEmbeddingsFieldName(fieldName, modelMetadata))
     if (res.length === 0) {
-        return embeddingsStatus.DOES_NOT_EXIST;
+        return EmbeddingsStatus.DOES_NOT_EXIST;
     }
     return res[0]["status"];
 }
@@ -44,7 +44,7 @@ function getEmbeddingsStatusDict(collectionName, destinationCollectionName, fiel
 function getOrCreateEmbeddingsStatusDict(graphName, collectionName, destinationCollectionName, fieldName, modelMetadata) {
     const res = getStatusesByCollectionDestinationAndEmbName(collectionName, destinationCollectionName, getEmbeddingsFieldName(fieldName, modelMetadata));
     if (res.length === 0) {
-        return createEmbeddingsStatus(graphName, collectionName, destinationCollectionName, fieldName, modelMetadata, embeddingsStatus.DOES_NOT_EXIST);
+        return createEmbeddingsStatus(graphName, collectionName, destinationCollectionName, fieldName, modelMetadata, EmbeddingsStatus.DOES_NOT_EXIST);
     }
     return res[0];
 }
@@ -52,7 +52,7 @@ function getOrCreateEmbeddingsStatusDict(graphName, collectionName, destinationC
 /**
  * Create a new status of how the embeddings generation is going.
  */
-function createEmbeddingsStatus(graphName, collectionName, destinationCollectionName, fieldName, modelMetadata, startStatus = embeddingsStatus.DOES_NOT_EXIST) {
+function createEmbeddingsStatus(graphName, collectionName, destinationCollectionName, fieldName, modelMetadata, startStatus = EmbeddingsStatus.DOES_NOT_EXIST) {
     return createStatus(
         graphName,
         collectionName,

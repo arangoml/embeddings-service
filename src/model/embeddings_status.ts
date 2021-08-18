@@ -1,18 +1,18 @@
 "use strict";
 
-const {context} = require("@arangodb/locals");
-const {modelTypes} = require("./model_metadata");
+import {context} from "@arangodb/locals";
+import {modelTypes} from "./model_metadata";
 
-const embeddingsStatus = {
-    RUNNING: "running",
-    RUNNING_FAILED: "running_failed",
-    FAILED: "failed",
-    COMPLETED: "completed",
-    DOES_NOT_EXIST: "do_not_exist"
+export enum EmbeddingsStatus {
+    RUNNING= "running",
+    RUNNING_FAILED = "running_failed",
+    FAILED = "failed",
+    COMPLETED = "completed",
+    DOES_NOT_EXIST = "do_not_exist"
 };
 
-const embeddingsStatusCollectionName = context.collectionName("_status");
-const embeddingsStatusSchema = {
+export const embeddingsStatusCollectionName = context.collectionName("_status");
+export const embeddingsStatusSchema = {
     rule: {
         "type": "object",
         "properties": {
@@ -27,11 +27,11 @@ const embeddingsStatusSchema = {
             "destination_collection": { "type": "string" },
             "status": {
                 "enum": [
-                    embeddingsStatus.RUNNING,
-                    embeddingsStatus.RUNNING_FAILED,
-                    embeddingsStatus.FAILED,
-                    embeddingsStatus.COMPLETED,
-                    embeddingsStatus.DOES_NOT_EXIST,
+                    EmbeddingsStatus.RUNNING,
+                    EmbeddingsStatus.RUNNING_FAILED,
+                    EmbeddingsStatus.FAILED,
+                    EmbeddingsStatus.COMPLETED,
+                    EmbeddingsStatus.DOES_NOT_EXIST,
                 ]
             },
             "last_run_timestamp": { "type": "string" }
@@ -49,7 +49,3 @@ const embeddingsStatusSchema = {
     level: "moderate",
     message: "The embeddings status is invalid"
 };
-
-exports.embeddingsStatus = embeddingsStatus;
-exports.embeddingsStatusCollectionName = embeddingsStatusCollectionName;
-exports.embeddingsStatusSchema = embeddingsStatusSchema;

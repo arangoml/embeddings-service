@@ -1,6 +1,6 @@
 "use strict";
 
-const {embeddingsStatus} = require("../model/embeddings_status");
+const {EmbeddingsStatus} = require("../model/embeddings_status");
 const {pruneEmbeddings, getCountDocumentsWithoutEmbedding} = require("../services/emb_collections_service");
 const {updateEmbeddingsStatusDict} = require("../services/emb_status_service");
 const {generateBatchesForModel} = require("../services/emb_generation_service");
@@ -9,9 +9,9 @@ const {embeddingsTargetsAreValid} = require("../utils/embeddings_target");
 function pruneEmbeddingsIfNeeded(embeddingsStatusDict, overwriteExisting) {
     if (!overwriteExisting) {
         switch (embeddingsStatusDict["status"]) {
-            case embeddingsStatus.DOES_NOT_EXIST:
-            case embeddingsStatus.RUNNING:
-            case embeddingsStatus.RUNNING_FAILED:
+            case EmbeddingsStatus.DOES_NOT_EXIST:
+            case EmbeddingsStatus.RUNNING:
+            case EmbeddingsStatus.RUNNING_FAILED:
                 // Don't need to prune in these cases
                 return;
             default:
@@ -27,12 +27,12 @@ function determineGenerationNeededForStatus(embeddingsStatusDict, overwriteExist
     let shouldEmbed = true;
 
     switch (embeddingsStatusDict["status"]) {
-        case embeddingsStatus.DOES_NOT_EXIST:
-        case embeddingsStatus.FAILED:
+        case EmbeddingsStatus.DOES_NOT_EXIST:
+        case EmbeddingsStatus.FAILED:
             message = start_msg;
             break;
-        case embeddingsStatus.RUNNING:
-        case embeddingsStatus.RUNNING_FAILED:
+        case EmbeddingsStatus.RUNNING:
+        case EmbeddingsStatus.RUNNING_FAILED:
             if (overwriteExisting) {
                 message = "Overwriting old embeddings. " + start_msg;
             } else {
@@ -40,7 +40,7 @@ function determineGenerationNeededForStatus(embeddingsStatusDict, overwriteExist
                 message = "Generation of embeddings is already running!";
             }
             break;
-        case embeddingsStatus.COMPLETED:
+        case EmbeddingsStatus.COMPLETED:
             // first check if we have any documents that don't already have an embedding
             if (!overwriteExisting) {
                 if (getCountDocumentsWithoutEmbedding(embeddingsStatusDict, embeddingsStatusDict["field_name"]) !== 0) {
@@ -72,11 +72,11 @@ function manageEmbeddingsForDocFieldAndModel(embStatusDict, modelMetadata, overw
         response_dict["message"] = message;
 
         if (shouldGenerate) {
-            updateEmbeddingsStatusDict(embStatusDict, embeddingsStatus.RUNNING);
+            updateEmbeddingsStatusDict(embStatusDict, EmbeddingsStatus.RUNNING);
             if (generateBatchesForModel(embStatusDict, modelMetadata, overwriteExisting)) {
                 // NOP
             } else {
-                updateEmbeddingsStatusDict(embStatusDict, embeddingsStatus.COMPLETED);
+                updateEmbeddingsStatusDict(embStatusDict, EmbeddingsStatus.COMPLETED);
                 response_dict["message"] = "Nothing to embed.";
             }
         }

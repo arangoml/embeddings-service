@@ -9,7 +9,7 @@ const {logMsg} = require("../utils/logging");
 const {getEmbeddingsFieldName, deleteEmbeddingsFieldEntries} = require("../services/emb_collections_service");
 const {getEmbeddingsStatus, updateEmbeddingsStatus} = require("../services/emb_status_service");
 const {queueBatch, scripts} = require("../services/emb_generation_service");
-const {embeddingsStatus} = require("../model/embeddings_status");
+const {EmbeddingsStatus} = require("../model/embeddings_status");
 const {EMB_QUEUE_NAME} = require("../utils/embeddings_queue");
 const {embeddingsTargetsAreValid} = require("../utils/embeddings_target");
 
@@ -155,13 +155,13 @@ function rollbackGeneratedEmbeddings(destinationCollectionName, fieldName, model
 
 function handleFailure(currentBatchFailed, isTheLastBatch, collectionName, destinationCollectionName, fieldName, modelMetadata) {
     if (currentBatchFailed) {
-        updateEmbeddingsStatus(embeddingsStatus.RUNNING_FAILED, collectionName, destinationCollectionName, fieldName, modelMetadata);
+        updateEmbeddingsStatus(EmbeddingsStatus.RUNNING_FAILED, collectionName, destinationCollectionName, fieldName, modelMetadata);
         // Disabled to enable partial loads
         // rollbackGeneratedEmbeddings(destinationCollectionName, fieldName, modelMetadata);
     }
 
     if (isTheLastBatch) {
-        updateEmbeddingsStatus(embeddingsStatus.FAILED, collectionName, destinationCollectionName, fieldName, modelMetadata);
+        updateEmbeddingsStatus(EmbeddingsStatus.FAILED, collectionName, destinationCollectionName, fieldName, modelMetadata);
     }
 }
 
@@ -206,10 +206,10 @@ function createNodeEmbeddings() {
             .forEach(getAndSaveNodeEmbeddingsForMiniBatch(collection, dCollection));
 
         if (isLastBatch) {
-            if (getEmbeddingsStatus(collectionName, destinationCollection, fieldName, modelMetadata) === embeddingsStatus.RUNNING_FAILED) {
+            if (getEmbeddingsStatus(collectionName, destinationCollection, fieldName, modelMetadata) === EmbeddingsStatus.RUNNING_FAILED) {
                 handleFailure(false, isLastBatch, collectionName, destinationCollection, fieldName, modelMetadata);
             } else {
-                updateEmbeddingsStatus(embeddingsStatus.COMPLETED, collectionName, destinationCollection, fieldName, modelMetadata);
+                updateEmbeddingsStatus(EmbeddingsStatus.COMPLETED, collectionName, destinationCollection, fieldName, modelMetadata);
             }
         }
     } catch (e) {
