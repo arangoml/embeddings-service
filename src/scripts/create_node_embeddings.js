@@ -8,7 +8,7 @@ const {logErr} = require("../utils/logging");
 const {logMsg} = require("../utils/logging");
 const {getEmbeddingsFieldName, deleteEmbeddingsFieldEntries} = require("../services/emb_collections_service");
 const {getEmbeddingsStatus, updateEmbeddingsStatus} = require("../services/emb_status_service");
-const {queueBatch, scripts} = require("../services/emb_generation_service");
+const {queueBatch, ScriptName} = require("../services/emb_generation_service");
 const {EmbeddingsStatus} = require("../model/embeddings_status");
 const {EMB_QUEUE_NAME} = require("../utils/embeddings_queue");
 const {embeddingsTargetsAreValid} = require("../utils/embeddings_target");
@@ -221,7 +221,7 @@ function createNodeEmbeddings() {
     // No matter what, queue the next batch
     if (!isLastBatch) {
         const q = queues.get(EMB_QUEUE_NAME);
-        queueBatch(scripts.NODE,
+        queueBatch(ScriptName.NODE,
             batchIndex + 1,
             batchSize,
             numberOfBatches,
