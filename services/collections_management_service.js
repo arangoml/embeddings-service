@@ -21,7 +21,7 @@ function manageEmbeddingsForStatusDict(embeddingsStatusDict) {
         logMsg(`Unable to find model ${embeddingsStatusDict["model_key"]}, skipping embeddings for ${embeddingsStatusDict["field_name"]} on ${embeddingsStatusDict["collection"]}`)
     }
 
-    manageEmbeddingsForDocFieldAndModel(embeddingsStatusDict, embeddingsStatusDict["graph_name"], modelMetadata, false);
+    manageEmbeddingsForDocFieldAndModel(embeddingsStatusDict, modelMetadata, false);
 }
 
 function shouldManageEmbeddingsStatus(embeddingsStatusDict) {

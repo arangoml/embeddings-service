@@ -61,7 +61,7 @@ function determineGenerationNeededForStatus(embeddingsStatusDict, overwriteExist
     };
 }
 
-function manageEmbeddingsForDocFieldAndModel(embStatusDict, graphName, modelMetadata, overwriteExisting) {
+function manageEmbeddingsForDocFieldAndModel(embStatusDict, modelMetadata, overwriteExisting) {
     let response_dict = {};
 
     // TODO: Decide on behavior if embeddings are no longer valid (e.g. the graph or collection has been deleted)
@@ -73,7 +73,7 @@ function manageEmbeddingsForDocFieldAndModel(embStatusDict, graphName, modelMeta
 
         if (shouldGenerate) {
             updateEmbeddingsStatusDict(embStatusDict, embeddingsStatus.RUNNING);
-            if (generateBatchesForModel(graphName, embStatusDict, modelMetadata, overwriteExisting)) {
+            if (generateBatchesForModel(embStatusDict, modelMetadata, overwriteExisting)) {
                 // NOP
             } else {
                 updateEmbeddingsStatusDict(embStatusDict, embeddingsStatus.COMPLETED);
