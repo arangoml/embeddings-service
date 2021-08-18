@@ -16,7 +16,6 @@ const embeddingsStatusSchema = {
     rule: {
         "type": "object",
         "properties": {
-           // TODO: FIX THIS AND ADD IT TO THE METHODS
             "graph_name": { "type": "string" },
             "model_key": { "type": "string" },
             "model_type": {
