@@ -4,7 +4,7 @@ const queues = require("@arangodb/foxx/queues");
 const {context} = require("@arangodb/locals");
 const {getModelByKey} = require("./model_metadata_service");
 const {logMsg} = require("../utils/logging");
-const {manageEmbeddingsForDocFieldAndModel} = require("../services/emb_management_service");
+const {manageEmbeddingsForDocFieldAndModel} = require("./emb_management_service");
 const {EmbeddingsStatus} = require("../model/embeddings_status");
 const {listEmbeddingsStatuses} = require("../db/embeddings_status");
 

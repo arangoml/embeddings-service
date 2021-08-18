@@ -1,14 +1,15 @@
 "use strict";
 
-const {EmbeddingsStatus} = require("../model/embeddings_status");
-const {pruneEmbeddings, getCountDocumentsWithoutEmbedding} = require("./emb_collections_service");
-const {updateEmbeddingsStatusDict} = require("./emb_status_service");
-const {generateBatchesForModel} = require("./emb_generation_service");
-const {embeddingsTargetsAreValid} = require("../utils/embeddings_target");
+import {EmbeddingsState, EmbeddingsStatus} from "../model/embeddings_status";
+import {pruneEmbeddings, getCountDocumentsWithoutEmbedding} from "./emb_collections_service";
+import {updateEmbeddingsStatusDict} from "./emb_status_service";
+import {generateBatchesForModel} from "./emb_generation_service";
+import {embeddingsTargetsAreValid} from "../utils/embeddings_target";
+import {ModelMetadata} from "../model/model_metadata";
 
-function pruneEmbeddingsIfNeeded(embeddingsStatusDict, overwriteExisting) {
+function pruneEmbeddingsIfNeeded(embeddingsState: EmbeddingsState, overwriteExisting: boolean): void {
     if (!overwriteExisting) {
-        switch (embeddingsStatusDict["status"]) {
+        switch (embeddingsState.status) {
             case EmbeddingsStatus.DOES_NOT_EXIST:
             case EmbeddingsStatus.RUNNING:
             case EmbeddingsStatus.RUNNING_FAILED:
@@ -18,15 +19,15 @@ function pruneEmbeddingsIfNeeded(embeddingsStatusDict, overwriteExisting) {
             // NOP
         }
     }
-    pruneEmbeddings(embeddingsStatusDict);
+    pruneEmbeddings(embeddingsState);
 }
 
-function determineGenerationNeededForStatus(embeddingsStatusDict, overwriteExisting) {
+function determineGenerationNeededForStatus(embeddingsState: EmbeddingsState, overwriteExisting: boolean): { shouldGenerate: boolean; message: string } {
     const start_msg = "Queued generation of embeddings!";
     let message = "";
     let shouldEmbed = true;
 
-    switch (embeddingsStatusDict["status"]) {
+    switch (embeddingsState.status) {
         case EmbeddingsStatus.DOES_NOT_EXIST:
         case EmbeddingsStatus.FAILED:
             message = start_msg;
@@ -43,7 +44,7 @@ function determineGenerationNeededForStatus(embeddingsStatusDict, overwriteExist
         case EmbeddingsStatus.COMPLETED:
             // first check if we have any documents that don't already have an embedding
             if (!overwriteExisting) {
-                if (getCountDocumentsWithoutEmbedding(embeddingsStatusDict, embeddingsStatusDict["field_name"]) !== 0) {
+                if (getCountDocumentsWithoutEmbedding(embeddingsState, embeddingsState.field_name) !== 0) {
                     message = "Adding new embeddings. " + start_msg;
                 } else {
                     shouldEmbed = false;
@@ -61,22 +62,22 @@ function determineGenerationNeededForStatus(embeddingsStatusDict, overwriteExist
     };
 }
 
-function manageEmbeddingsForDocFieldAndModel(embStatusDict, modelMetadata, overwriteExisting) {
-    let response_dict = {};
+export function manageEmbeddingsForDocFieldAndModel(embeddingsState: EmbeddingsState, modelMetadata: ModelMetadata, overwriteExisting: boolean): { [key: string]: string } {
+    let response_dict: { [key: string]: string } = {};
 
     // TODO: Decide on behavior if embeddings are no longer valid (e.g. the graph or collection has been deleted)
-    if (embeddingsTargetsAreValid(embStatusDict["graph_name"], embStatusDict["collection"])) {
-        pruneEmbeddingsIfNeeded(embStatusDict, overwriteExisting);
+    if (embeddingsTargetsAreValid(embeddingsState["graph_name"], embeddingsState["collection"])) {
+        pruneEmbeddingsIfNeeded(embeddingsState, overwriteExisting);
 
-        const {shouldGenerate, message} = determineGenerationNeededForStatus(embStatusDict, overwriteExisting);
+        const {shouldGenerate, message} = determineGenerationNeededForStatus(embeddingsState, overwriteExisting);
         response_dict["message"] = message;
 
         if (shouldGenerate) {
-            updateEmbeddingsStatusDict(embStatusDict, EmbeddingsStatus.RUNNING);
-            if (generateBatchesForModel(embStatusDict, modelMetadata, overwriteExisting)) {
+            updateEmbeddingsStatusDict(embeddingsState, EmbeddingsStatus.RUNNING);
+            if (generateBatchesForModel(embeddingsState, modelMetadata, overwriteExisting)) {
                 // NOP
             } else {
-                updateEmbeddingsStatusDict(embStatusDict, EmbeddingsStatus.COMPLETED);
+                updateEmbeddingsStatusDict(embeddingsState, EmbeddingsStatus.COMPLETED);
                 response_dict["message"] = "Nothing to embed.";
             }
         }
@@ -85,8 +86,6 @@ function manageEmbeddingsForDocFieldAndModel(embStatusDict, modelMetadata, overw
         response_dict["message"] = "Target Documents are in an invalid state, please check your DB";
     }
 
-    response_dict["embeddings_status_id"] = embStatusDict["_key"];
+    response_dict["embeddings_status_id"] = embeddingsState["_key"];
     return response_dict;
 }
-
-exports.manageEmbeddingsForDocFieldAndModel = manageEmbeddingsForDocFieldAndModel;
