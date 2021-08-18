@@ -1,7 +1,7 @@
 "use strict";
 
 import {query, db} from "@arangodb";
-import {metadataCollectionName, ModelTypes} from "../model/model_metadata";
+import {metadataCollectionName, ModelMetadata, ModelTypes} from "../model/model_metadata";
 
 /**
  * Retrieve a model's metadata from the model metadata collection,
@@ -26,7 +26,7 @@ export function retrieveModel(modelName: string, modelType: ModelTypes) {
     return null;
 }
 
-export function getModelByKey(modelKey: string) {
+export function getModelByKey(modelKey: string): ModelMetadata | null {
     const metadata_col = db._collection(metadataCollectionName);
     const model_info = query`
         FOR m in ${metadata_col}
