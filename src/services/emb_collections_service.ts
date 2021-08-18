@@ -1,12 +1,14 @@
 "use strict";
 
-const {query, db} = require("@arangodb");
+import {query, db} from "@arangodb";
+import {ModelMetadata} from "../model/model_metadata";
+import {EmbeddingsState} from "../model/embeddings_status";
 
-function colNameForCollectionAndModel(collectionName, modelName) {
+function colNameForCollectionAndModel(collectionName: string, modelName: string): string {
     return `emb_${collectionName}_${modelName}`;
 }
 
-function getDestinationCollectionName(collectionName, separateCollection, modelMetadata) {
+export function getDestinationCollectionName(collectionName: string, separateCollection: boolean, modelMetadata: ModelMetadata): string {
     // If not a separate collection, store on documents
     if (!separateCollection) {
         return collectionName;
@@ -24,11 +26,11 @@ function getDestinationCollectionName(collectionName, separateCollection, modelM
     return colName;
 }
 
-function getEmbeddingsFieldName(fieldName, modelMetadata) {
+export function getEmbeddingsFieldName(fieldName: string, modelMetadata: ModelMetadata): string {
     return `emb_${modelMetadata.name}_${fieldName}`;
 }
 
-function deleteEmbeddingsFieldEntries(destinationCollectionName, sourceFieldName, modelMetadata) {
+export function deleteEmbeddingsFieldEntries(destinationCollectionName: string, sourceFieldName: string, modelMetadata: ModelMetadata): void {
     const dCol = db._collection(destinationCollectionName);
     const embedding_field_name = getEmbeddingsFieldName(sourceFieldName, modelMetadata);
     query`
@@ -38,9 +40,9 @@ function deleteEmbeddingsFieldEntries(destinationCollectionName, sourceFieldName
     `;
 }
 
-function getCountDocumentsSameCollection(embeddingsStatusDict, sourceFieldName) {
-    const dCol = db._collection(embeddingsStatusDict["destination_collection"]);
-    const embedding_field_name = embeddingsStatusDict["emb_field_name"];
+function getCountDocumentsSameCollection(embeddingsState: EmbeddingsState, sourceFieldName: string): number {
+    const dCol = db._collection(embeddingsState.destination_collection);
+    const embedding_field_name = embeddingsState.emb_field_name;
     return query`
         RETURN COUNT(FOR doc in ${dCol}
           FILTER doc.${sourceFieldName} != null
@@ -49,11 +51,11 @@ function getCountDocumentsSameCollection(embeddingsStatusDict, sourceFieldName) 
     `.toArray()[0];
 }
 
-function getCountDocumentsSeparateCollection(embeddingsStatusDict, sourceFieldName) {
-    const dCol = db._collection(embeddingsStatusDict["destination_collection"]);
-    const sCol = db._collection(embeddingsStatusDict["collection"]);
+function getCountDocumentsSeparateCollection(embeddingsState: EmbeddingsState, sourceFieldName: string): number {
+    const dCol = db._collection(embeddingsState.destination_collection);
+    const sCol = db._collection(embeddingsState.collection);
 
-    const embedding_field_name = embeddingsStatusDict["emb_field_name"];
+    const embedding_field_name = embeddingsState.emb_field_name;
 
     return query`
         RETURN COUNT(
@@ -72,21 +74,23 @@ function getCountDocumentsSeparateCollection(embeddingsStatusDict, sourceFieldNa
         `.toArray()[0];
 }
 
-function getCountDocumentsWithoutEmbedding(embeddingsStatusDict, sourceFieldName) {
-    if (embeddingsStatusDict["destination_collection"] === embeddingsStatusDict["collection"]) {
-        return getCountDocumentsSameCollection(embeddingsStatusDict, sourceFieldName);
+export function getCountDocumentsWithoutEmbedding(embeddingsState: EmbeddingsState, sourceFieldName: string): number {
+    if (embeddingsState.destination_collection === embeddingsState.collection) {
+        return getCountDocumentsSameCollection(embeddingsState, sourceFieldName);
     } else {
-        return getCountDocumentsSeparateCollection(embeddingsStatusDict, sourceFieldName);
+        return getCountDocumentsSeparateCollection(embeddingsState, sourceFieldName);
     }
 }
 
-function pruneDocsWithChangedFieldsSameCollection(embeddingsStatusDict, fieldName) {
-    const sCol = db._collection(embeddingsStatusDict["collection"]);
-    const emb_field_name = embeddingsStatusDict["emb_field_name"];
+function pruneDocsWithChangedFieldsSameCollection(embeddingsState: EmbeddingsState): void {
+    const sCol = db._collection(embeddingsState.collection);
+    const emb_field_name = embeddingsState.emb_field_name;
     const emb_field_name_hash = `${emb_field_name}_hash`;
+    const field_name = embeddingsState.field_name;
+
     query`
         FOR doc in ${sCol}
-            FILTER doc.${emb_field_name_hash} != SHA1(doc.${fieldName})
+            FILTER doc.${emb_field_name_hash} != SHA1(doc.${field_name})
             UPDATE doc WITH {
                 ${emb_field_name}: null,
                 ${emb_field_name_hash}: null
@@ -94,13 +98,13 @@ function pruneDocsWithChangedFieldsSameCollection(embeddingsStatusDict, fieldNam
     `;
 }
 
-function pruneDocsWithChangedFieldsSeparateCollection(embeddingsStatusDict) {
-    const dCol = db._collection(embeddingsStatusDict["destination_collection"]);
-    const sCol = db._collection(embeddingsStatusDict["collection"]);
+function pruneDocsWithChangedFieldsSeparateCollection(embeddingsState: EmbeddingsState): void {
+    const dCol = db._collection(embeddingsState.destination_collection);
+    const sCol = db._collection(embeddingsState.collection);
 
-    const emb_field_name = embeddingsStatusDict["emb_field_name"];
+    const emb_field_name = embeddingsState.emb_field_name;
     const emb_field_name_hash = `${emb_field_name}_hash`;
-    const field_name = embeddingsStatusDict["field_name"];
+    const field_name = embeddingsState.field_name;
 
     query`
         FOR emb_doc in ${dCol}
@@ -118,18 +122,18 @@ function pruneDocsWithChangedFieldsSeparateCollection(embeddingsStatusDict) {
     `;
 }
 
-function pruneDocsWithChangedFields(embeddingsStatusDict) {
-    if (embeddingsStatusDict["destination_collection"] === embeddingsStatusDict["collection"]) {
-        pruneDocsWithChangedFieldsSameCollection(embeddingsStatusDict);
+function pruneDocsWithChangedFields(embeddingsState: EmbeddingsState): void {
+    if (embeddingsState.destination_collection === embeddingsState.collection) {
+        pruneDocsWithChangedFieldsSameCollection(embeddingsState);
     } else {
-        pruneDocsWithChangedFieldsSeparateCollection(embeddingsStatusDict);
+        pruneDocsWithChangedFieldsSeparateCollection(embeddingsState);
     }
 }
 
-function pruneDeletedDocs(embeddingsStatusDict) {
-    if (embeddingsStatusDict["destination_collection"] !== embeddingsStatusDict["collection"]) {
-        const dCol = db._collection(embeddingsStatusDict["destination_collection"]);
-        const sCol = db._collection(embeddingsStatusDict["collection"]);
+function pruneDeletedDocs(embeddingsState: EmbeddingsState): void {
+    if (embeddingsState.destination_collection !== embeddingsState.collection) {
+        const dCol = db._collection(embeddingsState.destination_collection);
+        const sCol = db._collection(embeddingsState.collection);
 
         query`
             FOR emb_doc in ${dCol}
@@ -145,14 +149,7 @@ function pruneDeletedDocs(embeddingsStatusDict) {
     }
 }
 
-function pruneEmbeddings(embeddingsStatusDict) {
-    pruneDeletedDocs(embeddingsStatusDict);
-    pruneDocsWithChangedFields(embeddingsStatusDict);
+export function pruneEmbeddings(embeddingsState: EmbeddingsState): void {
+    pruneDeletedDocs(embeddingsState);
+    pruneDocsWithChangedFields(embeddingsState);
 }
-
-
-exports.getDestinationCollectionName = getDestinationCollectionName;
-exports.getEmbeddingsFieldName = getEmbeddingsFieldName;
-exports.deleteEmbeddingsFieldEntries = deleteEmbeddingsFieldEntries;
-exports.getCountDocumentsWithoutEmbedding = getCountDocumentsWithoutEmbedding;
-exports.pruneEmbeddings = pruneEmbeddings;
