@@ -9,6 +9,33 @@ export enum ModelTypes {
     GRAPH_MODEL = "graph_embedding_model"
 };
 
+interface ModelSchema {
+    features?: string[];
+    type?: string;
+    input_shape?: number[];
+};
+
+interface ModelMetric {
+    key: string;
+    value: string | number;
+    value_type: string;
+};
+
+interface Metadata {
+    emb_dim: number;
+    inference_batch_size: number;
+    schema?: ModelSchema;
+    metrics?: ModelMetric[];
+};
+
+export interface ModelMetadata {
+    model_type: string;
+    name: string;
+    invocation_name: string;
+    metadata: Metadata;
+    framework: Object;
+};
+
 export const modelMetadataSchema = {
     rule: {
         "type": "object",
