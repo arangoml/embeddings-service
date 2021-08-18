@@ -93,27 +93,39 @@ function logTimeElapsed(response_json) {
 
 function insertEmbeddingsIntoDBSameCollection(docsWithKey, calculatedEmbeddings, fieldName, collection, modelMetadata) {
     const docs = docsWithKey.map((x, i) => {
-        return { "_key": x["_key"], "embedding": calculatedEmbeddings[i] };
+        return {
+            "_key": x["_key"],
+            "embedding": calculatedEmbeddings[i],
+            "field_data": x["field"]
+        };
     });
 
     const embedding_field_name = getEmbeddingsFieldName(fieldName, modelMetadata);
+    const field_hash_name = `${embedding_field_name}_hash`;
 
     query`
     FOR doc in ${docs}
       UPDATE {
         _key: doc["_key"]
       } WITH {
-        ${embedding_field_name}: doc["embedding"]
+        ${embedding_field_name}: doc["embedding"],
+        ${field_hash_name}: SHA1(doc["field_data"])
       } IN ${collection}
     `
 }
 
 function insertEmbeddingsIntoDBSepCollection(docsWithKey, calculatedEmbeddings, fieldName, dCollection, modelMetadata) {
     const docs = docsWithKey.map((x, i) => {
-        return { "_key": x["_key"], "embedding": calculatedEmbeddings[i], "emb_key": `emb_${x["_key"]}`};
+        return {
+            "_key": x["_key"],
+            "embedding": calculatedEmbeddings[i],
+            "emb_key": `emb_${x["_key"]}`,
+            "field_data": x["field"]
+        };
     });
 
     const embedding_field_name = getEmbeddingsFieldName(fieldName, modelMetadata);
+    const field_hash_name = `${embedding_field_name}_hash`;
 
     query`
     FOR doc in ${docs}
@@ -123,10 +135,12 @@ function insertEmbeddingsIntoDBSepCollection(docsWithKey, calculatedEmbeddings, 
       INSERT {
         _key: doc["emb_key"],
         doc_key: doc["_key"],
-        ${embedding_field_name}: doc["embedding"]
+        ${embedding_field_name}: doc["embedding"],
+        ${field_hash_name}: SHA1(doc["field_data"])
       }
       UPDATE {
-        ${embedding_field_name}: doc["embedding"]
+        ${embedding_field_name}: doc["embedding"],
+        ${field_hash_name}: SHA1(doc["field_data"])
       } IN ${dCollection}
     `;
 }

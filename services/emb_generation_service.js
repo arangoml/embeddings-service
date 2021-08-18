@@ -2,9 +2,7 @@
 
 const {context} = require("@arangodb/locals");
 const queues = require("@arangodb/foxx/queues");
-const {getCountEmbeddingsRunCollection} = require("./emb_collections_service");
-const {clearEmbeddingsRunCollection} = require("./emb_collections_service");
-const {createAndAddEmbeddingsRunCollection} = require("./emb_collections_service");
+const {getCountEmbeddingsRunCollection, clearEmbeddingsRunCollection, createAndAddEmbeddingsRunCollection} = require("./embeddings_run_service");
 const {modelTypes} = require("../model/model_metadata");
 const {EMB_QUEUE_NAME} = require("../utils/embeddings_queue");
 

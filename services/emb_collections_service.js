@@ -80,99 +80,73 @@ function getCountDocumentsWithoutEmbedding(embeddingsStatusDict, sourceFieldName
     }
 }
 
-function embeddingsRunCollectionName(embeddingsStatusDict) {
-    return `docs_${embeddingsStatusDict["destination_collection"]}`;
+function pruneDocsWithChangedFieldsSameCollection(embeddingsStatusDict, fieldName) {
+    const sCol = db._collection(embeddingsStatusDict["collection"]);
+    const emb_field_name = embeddingsStatusDict["emb_field_name"];
+    const emb_field_name_hash = `${emb_field_name}_hash`;
+    query`
+        FOR doc in ${sCol}
+            FILTER doc.${emb_field_name_hash} != SHA1(doc.${fieldName})
+            UPDATE doc WITH {
+                ${emb_field_name}: null,
+                ${emb_field_name_hash}: null
+            } IN ${sCol} OPTIONS { keepNull: false }
+    `;
 }
 
-function clearEmbeddingsRunCollection(embeddingsStatusDict) {
-    let colName = embeddingsRunCollectionName(embeddingsStatusDict);
-    let embeddingsRunCol = db._collection(colName);
-    if (embeddingsRunCol) {
-        embeddingsRunCol.drop();
-    }
-}
-
-function createEmbeddingsRunCollection(embeddingsStatusDict) {
-    let colName = embeddingsRunCollectionName(embeddingsStatusDict);
-    let embeddingsRunCol = db._collection(colName);
-    if (!embeddingsRunCol) {
-        embeddingsRunCol = db._createDocumentCollection(colName);
-    }
-    return embeddingsRunCol;
-}
-
-function createAndAddEmbeddingsRunCollectionSameCollection(embeddingsStatusDict, sourceFieldName) {
-    // Clear any docs first
-    clearEmbeddingsRunCollection(embeddingsStatusDict);
-    const embeddingsRunCol = createEmbeddingsRunCollection(embeddingsStatusDict);
+function pruneDocsWithChangedFieldsSeparateCollection(embeddingsStatusDict, fieldName) {
     const dCol = db._collection(embeddingsStatusDict["destination_collection"]);
-    const embedding_field_name = embeddingsStatusDict["emb_field_name"];
+    const sCol = db._collection(embeddingsStatusDict["collection"]);
+
+    const emb_field_name = embeddingsStatusDict["emb_field_name"];
+    const emb_field_name_hash = `${emb_field_name}_hash`;
+
     query`
-        FOR doc in ${dCol}
-          FILTER doc.${sourceFieldName} != null
-          FILTER doc.${embedding_field_name} == null
-          INSERT { _key: doc._key } INTO ${embeddingsRunCol}
+        FOR emb_doc in ${dCol}
+            LET corresponding = FIRST(
+                FOR doc in ${sCol}
+                    FILTER doc._key == emb_doc.doc_key
+                    LIMIT 1
+                    RETURN doc
+            )
+            FILTER emb_doc.${emb_field_name_hash} != SHA1(corresponding.${fieldName})
+            UPDATE emb_doc WITH {
+                ${emb_field_name}: null,
+                ${emb_field_name_hash}: null
+            } IN ${dCol} OPTIONS { keepNull: false }
     `;
 }
 
-function createAndAddEmbeddingsRunCollectionSeparateCollection(embeddingsStatusDict, sourceFieldName) {
-    // Clear any docs first
-    clearEmbeddingsRunCollection(embeddingsStatusDict);
-    const embeddingsRunCol = createEmbeddingsRunCollection(embeddingsStatusDict);
-    const sourceCol = db._collection(embeddingsStatusDict["collection"]);
-    const dCol = db._collection(embeddingsStatusDict["destination_collection"]);
-    const embedding_field_name = embeddingsStatusDict["emb_field_name"];
-    query`
-        FOR doc in ${sourceCol}
-          FILTER doc.${sourceFieldName} != null
-          LET emb_docs = (
-            FOR emb_d in ${dCol}
-              FILTER emb_d.doc_key == doc._key
-              FILTER emb_d.${embedding_field_name} != null
-              LIMIT 1
-              RETURN 1
-          )
-          FILTER LENGTH(emb_docs) == 0
-          INSERT { _key: doc._key } INTO ${embeddingsRunCol}
-    `;
-    return embeddingsRunCol.name();
-}
-
-function createAndAddEmbeddingsRunCollectionAllValidDocs(embeddingsStatusDict, sourceFieldName) {
-    // Clear any docs first
-    clearEmbeddingsRunCollection(embeddingsStatusDict);
-    const embeddingsRunCol = createEmbeddingsRunCollection(embeddingsStatusDict);
-    const sourceCol = db._collection(embeddingsStatusDict["collection"]);
-    query`
-        FOR doc in ${sourceCol}
-          FILTER doc.${sourceFieldName} != null
-          INSERT { _key: doc._key } INTO ${embeddingsRunCol}
-    `;
-    return embeddingsRunCol.name();
-}
-
-function createAndAddEmbeddingsRunCollection(embeddingsStatusDict, sourceFieldName, overwriteExisting) {
-    if (overwriteExisting) {
-        // here we just add all valid docs!
-        return createAndAddEmbeddingsRunCollectionAllValidDocs(embeddingsStatusDict, sourceFieldName);
-    }
-
+function pruneDocsWithChangedFields(embeddingsStatusDict, fieldName) {
     if (embeddingsStatusDict["destination_collection"] === embeddingsStatusDict["collection"]) {
-        return createAndAddEmbeddingsRunCollectionSameCollection(embeddingsStatusDict, sourceFieldName);
+        pruneDocsWithChangedFieldsSameCollection(embeddingsStatusDict, fieldName);
     } else {
-        return createAndAddEmbeddingsRunCollectionSeparateCollection(embeddingsStatusDict, sourceFieldName);
+        pruneDocsWithChangedFieldsSeparateCollection(embeddingsStatusDict, fieldName);
     }
 }
 
-function getCountEmbeddingsRunCollection(embeddingsStatusDict) {
-    let colName = embeddingsRunCollectionName(embeddingsStatusDict);
-    let embeddingsRunCol = db._collection(colName);
-    if (!embeddingsRunCol) {
-        return 0;
+function pruneDeletedDocs(embeddingsStatusDict) {
+    if (embeddingsStatusDict["destination_collection"] !== embeddingsStatusDict["collection"]) {
+        const dCol = db._collection(embeddingsStatusDict["destination_collection"]);
+        const sCol = db._collection(embeddingsStatusDict["collection"]);
+
+        query`
+            FOR emb_doc in ${dCol}
+                LET corresponding = (
+                    FOR doc in ${sCol}
+                        FILTER doc._key == emb_doc.doc_key
+                        LIMIT 1
+                        RETURN 1
+                )
+                FILTER LENGTH(corresponding) == 0
+                REMOVE emb_doc IN ${dCol}
+        `;
     }
-    return query`
-    RETURN COUNT(FOR d in ${embeddingsRunCol} RETURN 1)
-    `.toArray()[0];
+}
+
+function pruneEmbeddings(embeddingsStatusDict, fieldName) {
+    pruneDeletedDocs(embeddingsStatusDict);
+    pruneDocsWithChangedFields(embeddingsStatusDict, fieldName);
 }
 
 
@@ -180,6 +154,4 @@ exports.getDestinationCollectionName = getDestinationCollectionName;
 exports.getEmbeddingsFieldName = getEmbeddingsFieldName;
 exports.deleteEmbeddingsFieldEntries = deleteEmbeddingsFieldEntries;
 exports.getCountDocumentsWithoutEmbedding = getCountDocumentsWithoutEmbedding;
-exports.createAndAddEmbeddingsRunCollection = createAndAddEmbeddingsRunCollection;
-exports.clearEmbeddingsRunCollection = clearEmbeddingsRunCollection;
-exports.getCountEmbeddingsRunCollection = getCountEmbeddingsRunCollection;
+exports.pruneEmbeddings = pruneEmbeddings;
