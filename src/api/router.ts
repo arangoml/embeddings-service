@@ -1,13 +1,13 @@
 "use strict";
 
 const createRouter = require("@arangodb/foxx/router");
-const joi = require("joi");
-const {listModels} = require("../controllers/list_models");
-const {generateEmbeddings} = require("../controllers/generate_embeddings");
-const {embeddingsStatusesForModel, embeddingsStatusById} = require("../controllers/embeddings_status");
-const {ModelTypes} = require("../model/model_metadata");
+import * as joi from "joi";
+import {listModels} from "../controllers/list_models";
+import {generateEmbeddings} from "../controllers/generate_embeddings";
+import {embeddingsStatusesForModel, embeddingsStatusById} from "../controllers/embeddings_status";
+import {ModelTypes} from "../model/model_metadata";
 
-const router = createRouter();
+export const router = createRouter();
 
 router.post("/generate_embeddings", generateEmbeddings)
     .body(
@@ -50,6 +50,7 @@ router.post("/generate_embeddings", generateEmbeddings)
     ).response(
         422,
         joi.string(),
+        ["application/json"],
         "Invalid input"
     ).response(200,
         joi.object({
@@ -63,6 +64,7 @@ router.get("/embeddings_status/:statusId", embeddingsStatusById)
     .response(
         404,
         joi.string(),
+        ["application/json"],
         "Not found"
     )
     .response(200,
@@ -82,6 +84,7 @@ router.get("/embeddings_status", embeddingsStatusesForModel)
     .response(
         404,
         joi.string(),
+        ["application/json"],
         "Not found"
     )
     .response(200,
@@ -105,4 +108,4 @@ router.get("/models", listModels)
         )
     );
 
-exports.router = router;
+// exports.router = router;
