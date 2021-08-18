@@ -11,7 +11,7 @@
 import {logMsg} from "./logging";
 import {context} from "@arangodb/locals";
 
-function profileCall(fn: Function) {
+export function profileCall(fn: Function) {
     return function(...args: any[]) {
         const start = Date.now();
         const result = fn(...args);
@@ -22,5 +22,3 @@ function profileCall(fn: Function) {
         return result;
     };
 }
-
-exports.profileCall = profileCall;

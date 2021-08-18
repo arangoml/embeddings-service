@@ -1,15 +1,17 @@
 "use strict";
 
-const {getOrCreateEmbeddingsStatusDict} = require("../services/emb_status_service");
-const {checkCollectionIsPresent, checkGraphIsPresent} = require("../utils/db");
-const {ModelTypes} = require("../model/model_metadata");
-const {sendInvalidInputMessage} = require("../utils/invalid_input");
-const {retrieveModel} = require("../services/model_metadata_service");
-const {getDestinationCollectionName} = require("../services/emb_collections_service");
-const {profileCall} = require("../utils/profiling");
-const {manageEmbeddingsForDocFieldAndModel} = require("../services/emb_management_service");
+import {getOrCreateEmbeddingsStatusDict} from "../services/emb_status_service";
+import {checkCollectionIsPresent, checkGraphIsPresent} from "../utils/db";
+import {ModelTypes} from "../model/model_metadata";
+import {sendInvalidInputMessage} from "../utils/invalid_input";
+import {retrieveModel} from "../services/model_metadata_service";
+import {getDestinationCollectionName} from "../services/emb_collections_service";
+import {profileCall} from "../utils/profiling";
+import {manageEmbeddingsForDocFieldAndModel} from "../services/emb_management_service";
+import Request = Foxx.Request;
+import Response = Foxx.Response;
 
-function initialValidationGenerateEmbParams(req, res) {
+function initialValidationGenerateEmbParams(req: Request, res: Response): void {
     // check if model type is valid
     if (!Object.values(ModelTypes).some(v => v === req.body.modelType)) {
         sendInvalidInputMessage(res,
@@ -28,7 +30,7 @@ function initialValidationGenerateEmbParams(req, res) {
     }
 }
 
-function generateEmbeddings(req, res) {
+export function generateEmbeddings(req: Request, res: Response): void {
     initialValidationGenerateEmbParams(req, res);
 
     const {modelName, modelType, fieldName, graphName, collectionName, separateCollection, overwriteExisting} = req.body;
@@ -57,5 +59,3 @@ function generateEmbeddings(req, res) {
     const response_dict = profileCall(manageEmbeddingsForDocFieldAndModel)(embStatusDict, modelMetadata, overwriteExisting);
     res.json(response_dict);
 }
-
-exports.generateEmbeddings = generateEmbeddings;

@@ -1,11 +1,13 @@
 "use strict";
-const {getStatusByKey} = require("../db/embeddings_status");
-const {getStatusesByCollectionAndEmbName} = require("../db/embeddings_status");
-const {retrieveModel} = require("../services/model_metadata_service");
-const {getEmbeddingsFieldName} = require("../services/emb_collections_service");
-const {sendInvalidInputMessage} = require("../utils/invalid_input");
+import {getStatusByKey} from "../db/embeddings_status";
+import {getStatusesByCollectionAndEmbName} from "../db/embeddings_status";
+import {retrieveModel} from "../services/model_metadata_service";
+import {getEmbeddingsFieldName} from "../services/emb_collections_service";
+import {sendInvalidInputMessage} from "../utils/invalid_input";
+import Request = Foxx.Request;
+import Response = Foxx.Response;
 
-function embeddingsStatusesForModel(req, res) {
+export function embeddingsStatusesForModel(req: Request, res: Response): void {
     const {modelName, modelType, collectionName, fieldName} = req.queryParams;
     const modelMetadata = retrieveModel(modelName, modelType);
 
@@ -25,7 +27,7 @@ function embeddingsStatusesForModel(req, res) {
     res.json(statuses);
 }
 
-function embeddingsStatusById(req, res) {
+export function embeddingsStatusById(req: Request, res: Response): void {
     const {statusId} = req.pathParams;
 
     const status = getStatusByKey(statusId);
@@ -34,6 +36,3 @@ function embeddingsStatusById(req, res) {
     }
     res.json(status);
 }
-
-exports.embeddingsStatusesForModel = embeddingsStatusesForModel;
-exports.embeddingsStatusById = embeddingsStatusById;

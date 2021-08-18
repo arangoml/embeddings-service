@@ -2,8 +2,6 @@
 
 import Response = Foxx.Response;
 
-function sendInvalidInputMessage(res: Response, message: string) {
+export function sendInvalidInputMessage(res: Response, message: string) {
     res.throw(422, message);
 }
-
-exports.sendInvalidInputMessage = sendInvalidInputMessage;

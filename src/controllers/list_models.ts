@@ -1,9 +1,11 @@
 "use strict";
 
-const {query, db} = require("@arangodb");
-const {metadataCollectionName} = require("../model/model_metadata");
+import {query, db} from "@arangodb";
+import {metadataCollectionName} from "../model/model_metadata";
+import Request = Foxx.Request;
+import Response = Foxx.Response;
 
-function listModels(_req, res) {
+export function listModels(_req: Request, res: Response) {
     // Query the model metadata collection and return the results here!
     const metadata_col = db._collection(metadataCollectionName);
     const model_metadata = query`
@@ -16,5 +18,3 @@ function listModels(_req, res) {
     `.toArray();
     res.json(model_metadata);
 }
-
-exports.listModels = listModels;
