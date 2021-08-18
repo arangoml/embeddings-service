@@ -8,14 +8,14 @@
 //     }
 // }
 
-const {logMsg} = require("./logging");
-const {context} = require("@arangodb/locals");
+import {logMsg} from "./logging";
+import {context} from "@arangodb/locals";
 
-function profileCall(fn) {
-    return function() {
-        const start = new Date();
-        const result = fn.apply(this, arguments);
-        const end = new Date();
+function profileCall(fn: Function) {
+    return function(...args: any[]) {
+        const start = Date.now();
+        const result = fn(...args);
+        const end = Date.now();
         if (context.configuration.enableProfiling) {
             logMsg(`Call to ${fn.name} took ${end - start} ms.`);
         }

@@ -1,6 +1,8 @@
 "use strict";
 
-function sendInvalidInputMessage(res, message) {
+import Response = Foxx.Response;
+
+function sendInvalidInputMessage(res: Response, message: string) {
     res.throw(422, message);
 }
 
