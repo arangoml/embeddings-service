@@ -4,8 +4,8 @@
 "use strict";
 import {checkGraphIsPresent, checkCollectionIsPresent} from "./db";
 
-function embeddingsTargetsAreValid(graphName: string | null, collectionName: string) {
-    if (graphName !== null) {
+export function embeddingsTargetsAreValid(graphName: string | undefined | null, collectionName: string) {
+    if (graphName !== null && graphName !== undefined) {
         if (!checkGraphIsPresent(graphName)) {
             return false;
         }
@@ -13,5 +13,3 @@ function embeddingsTargetsAreValid(graphName: string | null, collectionName: str
     // Collection is always present (as per schema)
     return checkCollectionIsPresent(collectionName);
 }
-
-exports.embeddingsTargetsAreValid = embeddingsTargetsAreValid;
