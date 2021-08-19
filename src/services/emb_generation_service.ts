@@ -96,7 +96,7 @@ export function generateBatchesForModel(embeddingsState: EmbeddingsState, modelM
             return generateBatches(ScriptName.NODE, embeddingsState, modelMetadata, overwriteExisting);
         }
         case ModelTypes.GRAPH_MODEL: {
-            if (!graphName) {
+            if (!embeddingsState.graph_name) {
                 throw new Error("Requested to generate graph embeddings but no graph is provided");
             }
             return generateBatches(ScriptName.GRAPH, embeddingsState, modelMetadata, overwriteExisting);
