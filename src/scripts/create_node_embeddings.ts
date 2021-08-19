@@ -15,22 +15,9 @@ import {EmbeddingsStatus} from "../model/embeddings_status";
 import {EMB_QUEUE_NAME} from "../utils/embeddings_queue";
 import {embeddingsTargetsAreValid} from "../utils/embeddings_target";
 import {ModelMetadata} from "../model/model_metadata";
+import {GenerationJobInputArgs} from "../utils/generation_job_input_args";
 
 const {argv} = module.context;
-
-interface GenerationJobInputArgs {
-    graphName: string;
-    batchIndex: number;
-    batchSize: number;
-    numberOfBatches: number;
-    batchOffset: number;
-    collectionName: string;
-    modelMetadata: ModelMetadata;
-    fieldName: string;
-    destinationCollection: string;
-    separateCollection: boolean;
-    embeddingsRunColName: string;
-};
 
 const {batchIndex, batchSize, numberOfBatches, batchOffset, collectionName, modelMetadata, fieldName, destinationCollection, separateCollection, embeddingsRunColName}: GenerationJobInputArgs = argv[0];
 const isLastBatch = (batchIndex >= (numberOfBatches - 1));
