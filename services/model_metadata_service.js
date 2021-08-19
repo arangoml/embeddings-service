@@ -17,7 +17,22 @@ function retrieveModel(modelName, modelType) {
         FILTER m.name == ${modelName}
         AND m.model_type == ${modelType}
         RETURN m
-    `.toArray()
+    `.toArray();
+
+    if (model_info.length > 0) {
+        return model_info[0];
+    }
+    // if we don't have a model, return null
+    return null;
+}
+
+function getModelByKey(modelKey) {
+    const metadata_col = db._collection(metadataCollectionName);
+    const model_info = query`
+        FOR m in ${metadata_col}
+        FILTER m._key == ${modelKey}
+        RETURN m
+    `.toArray();
 
     if (model_info.length > 0) {
         return model_info[0];
@@ -27,3 +42,4 @@ function retrieveModel(modelName, modelType) {
 }
 
 exports.retrieveModel = retrieveModel;
+exports.getModelByKey = getModelByKey;

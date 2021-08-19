@@ -1,6 +1,7 @@
 "use strict";
 
 const {context} = require("@arangodb/locals");
+const {modelTypes} = require("./model_metadata");
 
 const embeddingsStatus = {
     RUNNING: "running",
@@ -15,7 +16,13 @@ const embeddingsStatusSchema = {
     rule: {
         "type": "object",
         "properties": {
+            "graph_name": { "type": "string" },
+            "model_key": { "type": "string" },
+            "model_type": {
+                "enum": Object.values(modelTypes)
+            },
             "emb_field_name": { "type": "string" },
+            "field_name": { "type": "string" },
             "collection": { "type": "string" },
             "destination_collection": { "type": "string" },
             "status": {
@@ -24,11 +31,20 @@ const embeddingsStatusSchema = {
                     embeddingsStatus.RUNNING_FAILED,
                     embeddingsStatus.FAILED,
                     embeddingsStatus.COMPLETED,
+                    embeddingsStatus.DOES_NOT_EXIST,
                 ]
             },
             "last_run_timestamp": { "type": "string" }
         },
-        "required": ["emb_field_name", "collection", "destination_collection", "status", "last_run_timestamp"]
+        "required": [
+            "model_key",
+            "model_type",
+            "emb_field_name",
+            "collection",
+            "destination_collection",
+            "status",
+            "last_run_timestamp"
+        ]
     },
     level: "moderate",
     message: "The embeddings status is invalid"

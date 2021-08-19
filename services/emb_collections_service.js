@@ -94,12 +94,13 @@ function pruneDocsWithChangedFieldsSameCollection(embeddingsStatusDict, fieldNam
     `;
 }
 
-function pruneDocsWithChangedFieldsSeparateCollection(embeddingsStatusDict, fieldName) {
+function pruneDocsWithChangedFieldsSeparateCollection(embeddingsStatusDict) {
     const dCol = db._collection(embeddingsStatusDict["destination_collection"]);
     const sCol = db._collection(embeddingsStatusDict["collection"]);
 
     const emb_field_name = embeddingsStatusDict["emb_field_name"];
     const emb_field_name_hash = `${emb_field_name}_hash`;
+    const field_name = embeddingsStatusDict["field_name"];
 
     query`
         FOR emb_doc in ${dCol}
@@ -109,7 +110,7 @@ function pruneDocsWithChangedFieldsSeparateCollection(embeddingsStatusDict, fiel
                     LIMIT 1
                     RETURN doc
             )
-            FILTER emb_doc.${emb_field_name_hash} != SHA1(corresponding.${fieldName})
+            FILTER emb_doc.${emb_field_name_hash} != SHA1(corresponding.${field_name})
             UPDATE emb_doc WITH {
                 ${emb_field_name}: null,
                 ${emb_field_name_hash}: null
@@ -117,11 +118,11 @@ function pruneDocsWithChangedFieldsSeparateCollection(embeddingsStatusDict, fiel
     `;
 }
 
-function pruneDocsWithChangedFields(embeddingsStatusDict, fieldName) {
+function pruneDocsWithChangedFields(embeddingsStatusDict) {
     if (embeddingsStatusDict["destination_collection"] === embeddingsStatusDict["collection"]) {
-        pruneDocsWithChangedFieldsSameCollection(embeddingsStatusDict, fieldName);
+        pruneDocsWithChangedFieldsSameCollection(embeddingsStatusDict);
     } else {
-        pruneDocsWithChangedFieldsSeparateCollection(embeddingsStatusDict, fieldName);
+        pruneDocsWithChangedFieldsSeparateCollection(embeddingsStatusDict);
     }
 }
 
@@ -144,9 +145,9 @@ function pruneDeletedDocs(embeddingsStatusDict) {
     }
 }
 
-function pruneEmbeddings(embeddingsStatusDict, fieldName) {
+function pruneEmbeddings(embeddingsStatusDict) {
     pruneDeletedDocs(embeddingsStatusDict);
-    pruneDocsWithChangedFields(embeddingsStatusDict, fieldName);
+    pruneDocsWithChangedFields(embeddingsStatusDict);
 }
 
 

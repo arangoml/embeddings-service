@@ -11,6 +11,7 @@ const {getEmbeddingsStatus, updateEmbeddingsStatus} = require("../services/emb_s
 const {queueBatch, scripts} = require("../services/emb_generation_service");
 const {embeddingsStatus} = require("../model/embeddings_status");
 const {EMB_QUEUE_NAME} = require("../utils/embeddings_queue");
+const {embeddingsTargetsAreValid} = require("../utils/embeddings_target");
 
 const {argv} = module.context;
 
@@ -25,6 +26,7 @@ function getDocumentsToEmbed(nDocs, startInd, docCollection, embeddingsRunCol, f
             LIMIT ${startInd}, ${nDocs}
             FOR doc in ${docCollection}
                 FILTER embRunDoc._key == doc._key
+                FILTER doc.${fieldToEmbed} != null
                 RETURN {
                   "_key": doc._key,
                   "field": doc.${fieldToEmbed}
@@ -168,7 +170,7 @@ function getAndSaveNodeEmbeddingsForMiniBatch(collection, dCollection) {
         const requestData = miniBatch.map(x => x["field"]);
         const res = profileCall(invokeEmbeddingModel)(requestData);
 
-        if (res.status == 200) {
+        if (res.status === 200) {
             logTimeElapsed(res.body);
             const embeddings = profileCall(extractEmbeddingsFromResponse)(res.body, modelMetadata.metadata.emb_dim);
             if (separateCollection) {
@@ -239,4 +241,8 @@ function createNodeEmbeddings() {
     }
 }
 
-profileCall(createNodeEmbeddings)();
+if (!embeddingsTargetsAreValid(null, collectionName)) {
+    logMsg(`Embeddings target collection ${collectionName} is no longer valid. Aborting generation...`);
+} else {
+    profileCall(createNodeEmbeddings)();
+}

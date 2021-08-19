@@ -39,9 +39,9 @@ function queueBatch(scriptName, i, batchSize, numBatches, batchOffset, graphName
  * Queue batch jobs to generate embeddings for a specified model/scriptType.
  * Returns true if batch jobs have been queued. This does NOT mean that they've succeeded yet.
  */
-function generateBatches(scriptType, graphName, embeddingsStatusDict, fieldName, separateCollection, modelMetadata, overwriteExisting) {
+function generateBatches(scriptType, embeddingsStatusDict, modelMetadata, overwriteExisting) {
     // Create the embeddings run collection
-    const embeddingsRunColName = createAndAddEmbeddingsRunCollection(embeddingsStatusDict, fieldName, overwriteExisting);
+    const embeddingsRunColName = createAndAddEmbeddingsRunCollection(embeddingsStatusDict, overwriteExisting);
     const numberOfDocuments = getCountEmbeddingsRunCollection(embeddingsStatusDict);
 
     if (numberOfDocuments === 0) {
@@ -62,28 +62,28 @@ function generateBatches(scriptType, graphName, embeddingsStatusDict, fieldName,
         batch_size,
         numBatches,
         0,
-        graphName,
+        embeddingsStatusDict["graph_name"],
         embeddingsStatusDict["collection"],
-        fieldName,
+        embeddingsStatusDict["field_name"],
         modelMetadata,
         embQ,
         embeddingsStatusDict["destination_collection"],
-        separateCollection,
+        embeddingsStatusDict["collection"] !== embeddingsStatusDict["destination_collection"],
         embeddingsRunColName
     );
     return true;
 }
 
-function generateBatchesForModel(graphName, embeddingsStatusDict, fieldName, separateCollection, modelMetadata, overwriteExisting = false) {
+function generateBatchesForModel(embeddingsStatusDict, modelMetadata, overwriteExisting = false) {
     switch (modelMetadata.model_type) {
         case modelTypes.WORD_EMBEDDING: {
-            return generateBatches(scripts.NODE, graphName, embeddingsStatusDict, fieldName, separateCollection, modelMetadata, overwriteExisting);
+            return generateBatches(scripts.NODE, embeddingsStatusDict, modelMetadata, overwriteExisting);
         }
         case modelTypes.GRAPH_MODEL: {
             if (!graphName) {
                 throw new Error("Requested to generate graph embeddings but no graph is provided");
             }
-            return generateBatches(scripts.GRAPH, graphName, embeddingsStatusDict, fieldName, separateCollection, modelMetadata, overwriteExisting);
+            return generateBatches(scripts.GRAPH, embeddingsStatusDict, modelMetadata, overwriteExisting);
         }
         default:
             throw new Error(`Error: unrecognized model type: ${modelMetadata.model_type}`);

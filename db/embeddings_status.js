@@ -39,17 +39,36 @@ function getStatusesByCollectionDestinationAndEmbName(collectionName, destinatio
     `.toArray();
 }
 
-function createStatus(collectionName, destinationCollectionName, embeddingsFieldName, status, timestamp) {
+function createStatus(graphName, collectionName, destinationCollectionName, embeddingsFieldName, fieldName, modelMetadata, status, timestamp) {
     const col = db._collection(embeddingsStatusCollectionName);
-    return query`
-    INSERT {
-        collection: ${collectionName},
-        destination_collection: ${destinationCollectionName},
-        emb_field_name: ${embeddingsFieldName},
-        status: ${status},
-        last_run_timestamp: ${timestamp}
-    } INTO ${col} RETURN NEW
-    `.toArray()[0];
+    if (graphName !== undefined && graphName.length > 0) {
+        return query`
+        INSERT {
+            graph_name: ${graphName},
+            model_key: ${modelMetadata["_key"]},
+            model_type: ${modelMetadata["model_type"]},
+            collection: ${collectionName},
+            destination_collection: ${destinationCollectionName},
+            emb_field_name: ${embeddingsFieldName},
+            field_name: ${fieldName},
+            status: ${status},
+            last_run_timestamp: ${timestamp}
+        } INTO ${col} RETURN NEW
+        `.toArray()[0];
+    } else {
+        return query`
+        INSERT {
+            model_key: ${modelMetadata["_key"]},
+            model_type: ${modelMetadata["model_type"]},
+            collection: ${collectionName},
+            destination_collection: ${destinationCollectionName},
+            emb_field_name: ${embeddingsFieldName},
+            field_name: ${fieldName},
+            status: ${status},
+            last_run_timestamp: ${timestamp}
+        } INTO ${col} RETURN NEW
+        `.toArray()[0];
+    }
 }
 
 function updateStatusByCollectionDestinationAndEmbName(collectionName, destinationCollectionName, embeddingsFieldName, newStatus, timestamp) {
@@ -66,8 +85,30 @@ function updateStatusByCollectionDestinationAndEmbName(collectionName, destinati
     `;
 }
 
+function updateEmbeddingsStatusByKey(embeddingsStatusKey, newStatus, timestamp) {
+    const col = db._collection(embeddingsStatusCollectionName);
+    return query`
+    FOR d in ${col}
+        FILTER d._key == ${embeddingsStatusKey}
+        UPDATE d._key WITH {
+            status: ${newStatus},
+            last_run_timestamp: ${timestamp} 
+        } IN ${col} RETURN NEW
+    `.toArray()[0];
+}
+
+function listEmbeddingsStatuses() {
+    const col = db._collection(embeddingsStatusCollectionName);
+    return query`
+    FOR d in ${col}
+        RETURN d
+    `.toArray();
+}
+
 exports.getStatusByKey = getStatusByKey;
 exports.getStatusesByCollectionAndEmbName = getStatusesByCollectionAndEmbName;
 exports.getStatusesByCollectionDestinationAndEmbName = getStatusesByCollectionDestinationAndEmbName;
 exports.createStatus = createStatus;
 exports.updateStatusByCollectionDestinationAndEmbName = updateStatusByCollectionDestinationAndEmbName;
+exports.updateEmbeddingsStatusByKey = updateEmbeddingsStatusByKey;
+exports.listEmbeddingsStatuses = listEmbeddingsStatuses;
