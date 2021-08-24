@@ -1,0 +1,36 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "allowSyntheticDefaultImports": true,
+    "alwaysStrict": true,
+    "downlevelIteration": true,
+    "importHelpers": false,
+    "sourceMap": true,
+    "inlineSources": true,
+    "lib": ["ES2020"],
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "noEmit": false,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitAny": true,
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "preserveConstEnums": true,
+    "removeComments": false,
+    "strict": true,
+    "strictFunctionTypes": true,
+    "strictNullChecks": true,
+    "target": "es2016",
+    "declaration": false,
+    "declarationMap": false,
+    "resolveJsonModule": true,
+    "outDir": "build/",
+    "rootDir": "src/",
+  },
+  "include": [
+    "src/**/*",
+    "src/*.json"
+  ]
+}
