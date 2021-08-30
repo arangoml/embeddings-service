@@ -27,7 +27,7 @@ const MAX_RETRIES = 5;
 interface TargetDocument {
     _key: string;
     field: any
-};
+}
 
 function getDocumentsToEmbed(nDocs: number, startInd: number, docCollection: Collection, embeddingsRunCol: Collection, fieldToEmbed: string): TargetDocument[] {
     return query`
@@ -57,7 +57,7 @@ function formatBatch(batchData: any[]) {
 }
 
 function invokeEmbeddingModel(dataToEmbed: any[]) {
-    const embeddingsServiceUrl = `${context.configuration.embeddingService}/v2/models/${modelMetadata.invocation_name}/infer`;
+    const embeddingsServiceUrl = `${context.configuration.embeddingService}/v2/models/${modelMetadata.invocation.invocation_name}/infer`;
     let tries = 0;
     let res = {"status": -1};
 
@@ -173,7 +173,7 @@ function getAndSaveNodeEmbeddingsForMiniBatch(collection: Collection, dCollectio
 
         if (res.status === 200) {
             logTimeElapsed(res.body);
-            const embeddings = profileCall(extractEmbeddingsFromResponse)(res.body, modelMetadata.metadata.emb_dim);
+            const embeddings = profileCall(extractEmbeddingsFromResponse)(res.body, modelMetadata.invocation.emb_dim);
             if (separateCollection) {
                 profileCall(insertEmbeddingsIntoDBSepCollection)(miniBatch, embeddings, fieldName, dCollection, modelMetadata);
             } else {
@@ -203,7 +203,7 @@ function createNodeEmbeddings(): void {
             batchSize, batchOffset, collection, embeddingsRunCol, fieldName
         );
 
-        chunkArray(toEmbed, modelMetadata.metadata.inference_batch_size)
+        chunkArray(toEmbed, modelMetadata.invocation.inference_batch_size)
             .forEach(getAndSaveNodeEmbeddingsForMiniBatch(collection, dCollection));
 
         if (isLastBatch) {
