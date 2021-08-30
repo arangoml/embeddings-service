@@ -42,6 +42,9 @@ const seedData = [
             input: {
                 field_type: FieldType.TEXT,
                 input_key: "INPUT0"
+            },
+            output: {
+                output_key: "OUTPUT0"
             }
         },
         data: [ // A list of the datasets that were used during training
@@ -84,6 +87,10 @@ const seedData = [
                 features_input_key: "input__0",
                 adjacency_list_input_keys: ["input__5", "input__3", "input__1"],
                 adjacency_size_input_keys: ["input__6", "input__4", "input__2"]
+            },
+            output: {
+                output_key: "output__1",
+                index: 499
             }
         },
         data: [

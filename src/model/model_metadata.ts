@@ -33,6 +33,13 @@ interface FieldInput {
 
 type InvocationInput = FieldInput | GraphInput;
 
+interface SingleOutput {
+    output_key: string;
+    index?: number;
+};
+
+type InvocationOutput = SingleOutput;
+
 interface ModelSchema {
     features?: string[];
     type?: string;
@@ -50,6 +57,7 @@ interface ModelInvocationMetadata {
     inference_batch_size: number;
     invocation_name: string;
     input: InvocationInput;
+    output: InvocationOutput;
 };
 
 interface Metadata {
@@ -136,8 +144,16 @@ export const modelMetadataSchema = {
                             }
                         ]
                     },
+                    "output": {
+                        "type": "object",
+                        "properties": {
+                            "output_key": { "type": "string" },
+                            "index": { "type": "number" }
+                        },
+                        "required": ["output_key"]
+                    }
                 },
-                "required": ['emb_dim', "inference_batch_size", "invocation_name", "input"]
+                "required": ['emb_dim', "inference_batch_size", "invocation_name", "input", "output"]
             },
             "metadata": {
                 "type": "object",
