@@ -14,7 +14,8 @@ interface NeighborhoodInformation {
     samples_per_hop: number[];
 };
 
-interface GraphInput {
+export interface GraphInput {
+    kind: "graph";
     neighborhood: NeighborhoodInformation;
     feature_dim: number;
     features_input_key: string;
@@ -27,6 +28,7 @@ export enum FieldType {
 }
 
 interface FieldInput {
+    kind: "field";
     field_type: FieldType;
     input_key: string;
 };
@@ -110,14 +112,16 @@ export const modelMetadataSchema = {
                             {
                                 "type": "object",
                                 "properties": {
+                                    "kind": { "enum": ["field"] },
                                     "field_type": {"enum": Object.values(FieldType)},
                                     "input_key": {"type": "string"}
                                 },
-                                "required": ["field_type", "input_key"]
+                                "required": ["kind", "field_type", "input_key"]
                             },
                             {
                                 "type": "object",
                                 "properties": {
+                                    "kind": { "enum": ["graph"] },
                                     "neighborhood": {
                                         "type": "object",
                                         "properties": {
@@ -140,7 +144,7 @@ export const modelMetadataSchema = {
                                         "items": { "type": "string" }
                                     },
                                 },
-                                "required": ["neighborhood", "feature_dim", "features_input_key", "adjacency_list_input_keys", "adjacency_size_input_keys"]
+                                "required": ["kind", "neighborhood", "feature_dim", "features_input_key", "adjacency_list_input_keys", "adjacency_size_input_keys"]
                             }
                         ]
                     },

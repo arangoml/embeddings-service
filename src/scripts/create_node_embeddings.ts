@@ -1,7 +1,6 @@
 "use strict";
 import Collection = ArangoDB.Collection;
 
-const request = require("@arangodb/request");
 const queues = require("@arangodb/foxx/queues");
 import {query, db} from "@arangodb";
 import {profileCall} from "../utils/profiling";
@@ -16,6 +15,7 @@ import {EMB_QUEUE_NAME} from "../utils/embeddings_queue";
 import {embeddingsTargetsAreValid} from "../utils/embeddings_target";
 import {ModelMetadata} from "../model/model_metadata";
 import {GenerationJobInputArgs} from "../utils/generation_job_input_args";
+import {invokeEmbeddingModel} from "../utils/invocation";
 
 const {argv} = module.context;
 
@@ -56,24 +56,9 @@ function formatBatch(batchData: any[]) {
     };
 }
 
-function invokeEmbeddingModel(dataToEmbed: any[]) {
-    const embeddingsServiceUrl = `${context.configuration.embeddingService}/v2/models/${modelMetadata.invocation.invocation_name}/infer`;
-    let tries = 0;
-    let res = {"status": -1};
-
-    while (res.status !== 200 && tries < MAX_RETRIES) {
-        const now = new Date().getTime();
-        while (new Date().getTime() < now + tries) {
-            // NOP
-        }
-
-        res = request.post(embeddingsServiceUrl, {
-            body: formatBatch(dataToEmbed),
-            json: true
-        });
-        tries++;
-    }
-    return res;
+function callModel(dataToEmbed: any[]) {
+    const requestBody = formatBatch(dataToEmbed);
+    return invokeEmbeddingModel(requestBody, context.configuration.embeddingService, modelMetadata.invocation.invocation_name, MAX_RETRIES);
 }
 
 function chunkArray(array: any[], chunk_size: number) {
@@ -169,7 +154,7 @@ function handleFailure(currentBatchFailed: boolean, isTheLastBatch: boolean, col
 function getAndSaveNodeEmbeddingsForMiniBatch(collection: Collection, dCollection: Collection): (miniBatch: TargetDocument[]) => void {
     return function (miniBatch: TargetDocument[]) {
         const requestData = miniBatch.map(x => x.field);
-        const res = profileCall(invokeEmbeddingModel)(requestData);
+        const res = profileCall(callModel)(requestData);
 
         if (res.status === 200) {
             logTimeElapsed(res.body);

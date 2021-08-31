@@ -40,6 +40,7 @@ const seedData = [
             emb_dim: 768,
             inference_batch_size: 64,
             input: {
+                kind: "field",
                 field_type: FieldType.TEXT,
                 input_key: "INPUT0"
             },
@@ -79,6 +80,7 @@ const seedData = [
             emb_dim: 256,
             inference_batch_size: 1,
             input: {
+                kind: "graph",
                 neighborhood: {
                     number_of_hops: 3,
                     samples_per_hop: [15, 10, 5]
@@ -125,8 +127,6 @@ const seedData = [
         }
     }
 ];
-
-console.log(JSON.stringify(seedData[1]));
 
 function seedMetadataCol(collection: Collection): void {
     collection.insert(seedData);
