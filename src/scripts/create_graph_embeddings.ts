@@ -89,12 +89,44 @@ interface TraversalResult {
     neighbors?: TraversalResult[];
 }
 
-function flattenTraversalResult(t: TraversalResult) {
+function flattenTraversalResult(t: TraversalResult, index: number) {
     if (t.neighbors == undefined) {
-        return [t.node.field];
+        return {
+            features: [t.node.field],
+            adj_lists: []
+        };
     } else {
+        let cur_index = index + 1;
+        const features = [t.node.field];
+        const adj_mat = [[index, index]];
+        const child_adj_mat_lists = [];
 
-        return;
+        for (let x of t.neighbors) {
+            const result = flattenTraversalResult(x, cur_index);
+            if (result.adj_lists.length > 0) {
+                child_adj_mat_lists.push(result.adj_lists);
+            }
+
+            adj_mat.push([index, cur_index]);
+            features.push(...result.features);
+            cur_index += result.features.length;
+        }
+
+        const final_lists = [adj_mat];
+        child_adj_mat_lists.forEach((child_lists) => {
+            child_lists.forEach((child_list, ind) => {
+                const l_ind = ind + 1;
+                if (final_lists.length == l_ind) {
+                    final_lists.push(adj_mat);
+                }
+                final_lists[l_ind].push(...child_list);
+            });
+        });
+
+        return {
+            features,
+            adj_lists: final_lists
+        };
     }
 }
 
