@@ -4,11 +4,13 @@ import {aql, db, query} from "@arangodb";
 import Collection = ArangoDB.Collection;
 import {GraphInput} from "../model/model_metadata";
 import {logErr, logMsg} from "../utils/logging";
+import {updateEmbeddingsStatus} from "../services/emb_status_service";
+import {EmbeddingsStatus} from "../model/embeddings_status";
 // import * as graph_module from "@arangodb/general-graph";
 
 const {argv} = module.context;
 
-const {batchIndex, batchSize, numberOfBatches, batchOffset, collectionName, graphName, modelMetadata, fieldName, embeddingsRunColName}: GenerationJobInputArgs = argv[0];
+const {batchIndex, batchSize, batchOffset, numberOfBatches, collectionName, destinationCollection, graphName, modelMetadata, fieldName, embeddingsRunColName}: GenerationJobInputArgs = argv[0];
 const isLastBatch = (batchIndex >= (numberOfBatches - 1));
 console.log(isLastBatch);
 
@@ -38,23 +40,27 @@ function buildSubQuery(currentDepth: number, maxDepth: number, sampleSizes: numb
     const prevChar = String.fromCharCode(98 + currentDepth - 1);
     if (currentDepth == maxDepth) {
         return `
-            WITH ${docCollection.name()}
             FOR ${currentChar} IN 1 ANY ${prevChar} GRAPH ${graphName}
                 SORT RAND()
                 LIMIT ${sampleSizes[currentDepth]}
                 RETURN {
-                    "node": ${currentChar}
+                    "node": {
+                        "_key": a._key,
+                        "field": ${currentChar}.${fieldName}
+                    },
                 }
         `;
     } else {
         return `
-            WITH ${docCollection.name()}
             FOR ${currentChar} IN 1 ANY ${prevChar} GRAPH ${graphName}
                 SORT RAND()
                 LIMIT ${sampleSizes[currentDepth]}
                 LET nh = (${buildSubQuery(currentDepth + 1, maxDepth, sampleSizes, graphName, docCollection)})
                 RETURN {
-                    "node": ${currentChar},
+                    "node": {
+                        "_key": a._key,
+                        "field": ${currentChar}.${fieldName}
+                    },
                     "neighbors": nh
                 }
         `
@@ -64,7 +70,6 @@ function buildSubQuery(currentDepth: number, maxDepth: number, sampleSizes: numb
 
 function buildGraphQuery(graphInput: GraphInput, graphName: string, targetDocs: any[], docCollection: Collection) {
     const subQuery = buildSubQuery(0, graphInput.neighborhood.number_of_hops - 1, graphInput.neighborhood.samples_per_hop, graphName, docCollection);
-    logMsg(subQuery);
     return aql`
         FOR doc in ${targetDocs}
         FOR a IN ${docCollection} 
@@ -73,7 +78,10 @@ function buildGraphQuery(graphInput: GraphInput, graphName: string, targetDocs: 
                 ${aql.literal(subQuery)}
             )
             RETURN {
-                "node": a,
+                "node": {
+                    "_key": a._key,
+                    "field": a.${fieldName}
+                },
                 "neighbors": nh
             }
     `;
@@ -90,7 +98,7 @@ interface TraversalResult {
 }
 
 function flattenTraversalResult(t: TraversalResult, index: number) {
-    if (t.neighbors == undefined) {
+    if (t.neighbors == undefined || t.neighbors.length == 0) {
         return {
             features: [t.node.field],
             adj_lists: []
@@ -117,7 +125,7 @@ function flattenTraversalResult(t: TraversalResult, index: number) {
             child_lists.forEach((child_list, ind) => {
                 const l_ind = ind + 1;
                 if (final_lists.length == l_ind) {
-                    final_lists.push(adj_mat);
+                    final_lists.push(Array.from(adj_mat.map(arr => Array.from(arr))));
                 }
                 final_lists[l_ind].push(...child_list);
             });
@@ -131,22 +139,22 @@ function flattenTraversalResult(t: TraversalResult, index: number) {
 }
 
 function traversalResultToMatrixWithAdjacency(traversalResult: TraversalResult[]) {
-    logMsg(traversalResult);
-    // For each result, flatten it into, (1) A giant feature matrix. (2) Adjacency lists per level
-    traversalResult.map(flattenTraversalResult);
+    return traversalResult.map(res => flattenTraversalResult(res, 0));
 }
 
 function createGraphEmbeddings() {
     const docCollection = db._collection(collectionName);
     const embeddingsRunCol = db._collection(embeddingsRunColName);
     const targetIds = getTargetDocumentIds(1, batchOffset, docCollection, embeddingsRunCol, fieldName);
-    logMsg(targetIds);
 
     // const graph = graph_module._graph(graphName);
     if (modelMetadata.invocation.input.kind == "graph") {
         const query = buildGraphQuery(modelMetadata.invocation.input, graphName, targetIds, docCollection);
         const traversalResult = db._query(query).toArray();
-        traversalResultToMatrixWithAdjacency(traversalResult);
+        const {features, adj_lists} = traversalResultToMatrixWithAdjacency(traversalResult)[0];
+        logMsg(features.length);
+        logMsg(adj_lists.length);
+        updateEmbeddingsStatus(EmbeddingsStatus.FAILED, collectionName, destinationCollection, fieldName, modelMetadata);
     } else {
         throw TypeError("Model Invocation Input Type is not 'graph'.")
     }
