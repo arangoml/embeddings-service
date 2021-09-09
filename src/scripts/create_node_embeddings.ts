@@ -15,7 +15,7 @@ import {EMB_QUEUE_NAME} from "../utils/embeddings_queue";
 import {embeddingsTargetsAreValid} from "../utils/embeddings_target";
 import {ModelMetadata} from "../model/model_metadata";
 import {GenerationJobInputArgs} from "../utils/generation_job_input_args";
-import {invokeEmbeddingModel} from "../utils/invocation";
+import {chunkArray, invokeEmbeddingModel} from "../utils/invocation";
 
 const {argv} = module.context;
 
@@ -59,13 +59,6 @@ function formatBatch(batchData: any[]) {
 function callModel(dataToEmbed: any[]) {
     const requestBody = formatBatch(dataToEmbed);
     return invokeEmbeddingModel(requestBody, context.configuration.embeddingService, modelMetadata.invocation.invocation_name, MAX_RETRIES);
-}
-
-function chunkArray(array: any[], chunk_size: number) {
-    return Array(Math.ceil(array.length / chunk_size))
-        .fill(0)
-        .map((_, i) => i * chunk_size)
-        .map(begin => array.slice(begin, begin + chunk_size));
 }
 
 function extractEmbeddingsFromResponse(response_json: any, embedding_dim: number) {

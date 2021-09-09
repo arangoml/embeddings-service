@@ -20,7 +20,7 @@ export interface GraphInput {
     feature_dim: number;
     features_input_key: string;
     adjacency_list_input_keys: string[];
-    adjacency_sizes_input_keys: string[];
+    adjacency_size_input_keys: string[];
 };
 
 export enum FieldType {
@@ -40,7 +40,7 @@ interface SingleOutput {
     index?: number;
 };
 
-type InvocationOutput = SingleOutput;
+export type InvocationOutput = SingleOutput;
 
 interface ModelSchema {
     features?: string[];
