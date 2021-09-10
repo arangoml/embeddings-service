@@ -3,18 +3,23 @@ import {GenerationJobInputArgs} from "../utils/generation_job_input_args";
 import {aql, db, query} from "@arangodb";
 import Collection = ArangoDB.Collection;
 import {GraphInput, InvocationOutput} from "../model/model_metadata";
-import {logErr, logMsg} from "../utils/logging";
+import {logErr} from "../utils/logging";
 import {updateEmbeddingsStatus} from "../services/emb_status_service";
 import {EmbeddingsStatus} from "../model/embeddings_status";
 import {transposeMatrix} from "../utils/matrix";
 import {chunkArray, invokeEmbeddingModel} from "../utils/invocation";
 import {context} from "@arangodb/locals";
-import {flattenTraversalResult} from "../script_functions/graph_embeddings";
+import {
+    flattenTraversalResult,
+    insertGraphEmbeddingsIntoDBSameCollection, insertGraphEmbeddingsIntoDBSepCollection,
+    TraversalResult
+} from "../script_functions/graph_embeddings";
+import {profileCall} from "../utils/profiling";
 // import * as graph_module from "@arangodb/general-graph";
 
 const {argv} = module.context;
 
-const {batchIndex, batchSize, batchOffset, numberOfBatches, collectionName, destinationCollection, graphName, modelMetadata, fieldName, embeddingsRunColName}: GenerationJobInputArgs = argv[0];
+const {batchIndex, batchSize, batchOffset, numberOfBatches, collectionName, destinationCollection, graphName, modelMetadata, fieldName, embeddingsRunColName, separateCollection}: GenerationJobInputArgs = argv[0];
 const isLastBatch = (batchIndex >= (numberOfBatches - 1));
 console.log(isLastBatch);
 
@@ -188,23 +193,46 @@ function extractEmbeddingsFromResponse(response_json: any, embedding_dim: number
     return result[0];
 }
 
+function getAndSaveGraphEmbeddingsForMiniBatch(docCollection: Collection, dCollection: Collection, input: GraphInput) {
+    return function (miniBatch: TraversalResult[]) {
+        const flattened = miniBatch.map(res => flattenTraversalResult(res, input.neighborhood.number_of_hops));
+
+        // Foreach because of model only supporting batch size of 1 right now
+        flattened.forEach((flatArr, i) => {
+            const res = profileCall(getTargetEmbedding)(input)(flatArr);
+            if (res.status === 200) {
+                const embedding = profileCall(extractEmbeddingsFromResponse)(res.body, modelMetadata.invocation.emb_dim, modelMetadata.invocation.output);
+                if (separateCollection) {
+                    profileCall(insertGraphEmbeddingsIntoDBSepCollection)([miniBatch[i]], [embedding], fieldName, dCollection, modelMetadata);
+                } else {
+                    profileCall(insertGraphEmbeddingsIntoDBSameCollection)([miniBatch[i]], [embedding], fieldName, docCollection, modelMetadata);
+                }
+            } else {
+                logErr(res);
+                logErr("Failed to get requested embedding for minibatch!")
+            }
+        });
+    };
+}
+
 function createGraphEmbeddings() {
     const docCollection = db._collection(collectionName);
+    const dCollection = db._collection(destinationCollection);
     const embeddingsRunCol = db._collection(embeddingsRunColName);
-    const targetIds = getTargetDocumentIds(1, batchOffset, docCollection, embeddingsRunCol, fieldName);
+    const targetIds = getTargetDocumentIds(batchSize, batchOffset, docCollection, embeddingsRunCol, fieldName);
 
     try {
         // const graph = graph_module._graph(graphName);
         if (modelMetadata.invocation.input.kind == "graph") {
-            const query = buildGraphQuery(modelMetadata.invocation.input, graphName, targetIds, docCollection);
-            const traversalResult = db._query(query).toArray();
-            const embeddingsRes = traversalResult
-                .map(res => flattenTraversalResult(res))
-                .map(getTargetEmbedding(modelMetadata.invocation.input))[0];
-            logMsg(extractEmbeddingsFromResponse(embeddingsRes.body, modelMetadata.invocation.emb_dim, modelMetadata.invocation.output));
-            // const {features, adj_lists} = traversalResultToMatrixWithAdjacency(traversalResult)[0];
-            // logMsg(features.length);
-            // logMsg(adj_lists.length);
+            const graphInput: GraphInput = modelMetadata.invocation.input;
+            chunkArray(targetIds, modelMetadata.invocation.inference_batch_size)
+                .forEach((chunk) => {
+                    console.log(chunk);
+                    const query = buildGraphQuery(graphInput, graphName, chunk, docCollection);
+                    const traversalResult = db._query(query).toArray();
+                    chunkArray(traversalResult, modelMetadata.invocation.inference_batch_size)
+                        .forEach(getAndSaveGraphEmbeddingsForMiniBatch(docCollection, dCollection, graphInput));
+                });
             updateEmbeddingsStatus(EmbeddingsStatus.FAILED, collectionName, destinationCollection, fieldName, modelMetadata);
         } else {
             throw TypeError("Model Invocation Input Type is not 'graph'.")
