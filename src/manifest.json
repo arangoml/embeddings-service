@@ -41,5 +41,8 @@
     "createNodeEmbeddings": "scripts/create_node_embeddings.js",
     "createGraphEmbeddings": "scripts/create_graph_embeddings.js",
     "backgroundEmbeddingsManagement": "scripts/manage_embedding_collections.js"
-  }
+  },
+  "tests": [
+    "test/**/*.spec.js"
+  ]
 }

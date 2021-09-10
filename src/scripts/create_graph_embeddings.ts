@@ -9,6 +9,7 @@ import {EmbeddingsStatus} from "../model/embeddings_status";
 import {transposeMatrix} from "../utils/matrix";
 import {chunkArray, invokeEmbeddingModel} from "../utils/invocation";
 import {context} from "@arangodb/locals";
+import {flattenTraversalResult} from "../script_functions/graph_embeddings";
 // import * as graph_module from "@arangodb/general-graph";
 
 const {argv} = module.context;
@@ -90,57 +91,6 @@ function buildGraphQuery(graphInput: GraphInput, graphName: string, targetDocs: 
     `;
 }
 
-interface TargetDoc {
-    _key: string;
-    field: string;
-}
-
-interface TraversalResult {
-    node: TargetDoc;
-    neighbors?: TraversalResult[];
-}
-
-function flattenTraversalResult(t: TraversalResult, index: number): { features: any[]; adj_lists: number[][][] } {
-    if (t.neighbors == undefined || t.neighbors.length == 0) {
-        return {
-            features: [t.node.field],
-            adj_lists: []
-        };
-    } else {
-        let cur_index = index + 1;
-        const features = [t.node.field];
-        const adj_mat = [[index, index]];
-        const child_adj_mat_lists = [];
-
-        for (let x of t.neighbors) {
-            const result = flattenTraversalResult(x, cur_index);
-            if (result.adj_lists.length > 0) {
-                child_adj_mat_lists.push(result.adj_lists);
-            }
-
-            adj_mat.push([index, cur_index]);
-            features.push(...result.features);
-            cur_index += result.features.length;
-        }
-
-        const final_lists = [adj_mat];
-        child_adj_mat_lists.forEach((child_lists) => {
-            child_lists.forEach((child_list, ind) => {
-                const l_ind = ind + 1;
-                if (final_lists.length == l_ind) {
-                    final_lists.push(Array.from(adj_mat.map(arr => Array.from(arr))));
-                }
-                final_lists[l_ind].push(...child_list);
-            });
-        });
-
-        return {
-            features,
-            adj_lists: final_lists
-        };
-    }
-}
-
 // function traversalResultToMatrixWithAdjacency(traversalResult: TraversalResult[]) {
 //     return traversalResult.map(res => flattenTraversalResult(res, 0));
 // }
@@ -149,7 +99,8 @@ function padFeaturesMatrix(featuresMatrix: any[], expected_size: number) {
     // For a feature matrix, pad with zeros
     if (featuresMatrix.length > 0) {
         if (featuresMatrix.length > expected_size) {
-            throw RangeError("Features matrix is greater than the model's expected max size!");
+            // return featuresMatrix.slice(0, expected_size);
+            throw RangeError(`Features matrix is greater than the model's expected max size! Got: ${featuresMatrix.length}, expected ${expected_size}`);
         }
         const newFeatMat = JSON.parse(JSON.stringify(featuresMatrix)); // start w/ a deep copy
         // Grab first size and pad
@@ -172,9 +123,9 @@ function createAdjacencySizes(adj_lists: number[][][], startIndex: number = 0) {
             return [adj_list.length, 1];
         }
         if (isForwardMap) {
-            return [adj_list.length, adj_list[i - 1].length];
+            return [adj_list.length, adj_lists[i - 1].length];
         }
-        return [adj_list.length, adj_list[i + 1].length];
+        return [adj_list.length, adj_lists[i + 1].length];
     });
 }
 
@@ -242,20 +193,25 @@ function createGraphEmbeddings() {
     const embeddingsRunCol = db._collection(embeddingsRunColName);
     const targetIds = getTargetDocumentIds(1, batchOffset, docCollection, embeddingsRunCol, fieldName);
 
-    // const graph = graph_module._graph(graphName);
-    if (modelMetadata.invocation.input.kind == "graph") {
-        const query = buildGraphQuery(modelMetadata.invocation.input, graphName, targetIds, docCollection);
-        const traversalResult = db._query(query).toArray();
-        const embeddingsRes = traversalResult
-            .map(res => flattenTraversalResult(res, 0))
-            .map(getTargetEmbedding(modelMetadata.invocation.input))[0];
-        logMsg(extractEmbeddingsFromResponse(embeddingsRes.body, modelMetadata.invocation.emb_dim, modelMetadata.invocation.output));
-        // const {features, adj_lists} = traversalResultToMatrixWithAdjacency(traversalResult)[0];
-        // logMsg(features.length);
-        // logMsg(adj_lists.length);
+    try {
+        // const graph = graph_module._graph(graphName);
+        if (modelMetadata.invocation.input.kind == "graph") {
+            const query = buildGraphQuery(modelMetadata.invocation.input, graphName, targetIds, docCollection);
+            const traversalResult = db._query(query).toArray();
+            const embeddingsRes = traversalResult
+                .map(res => flattenTraversalResult(res))
+                .map(getTargetEmbedding(modelMetadata.invocation.input))[0];
+            logMsg(extractEmbeddingsFromResponse(embeddingsRes.body, modelMetadata.invocation.emb_dim, modelMetadata.invocation.output));
+            // const {features, adj_lists} = traversalResultToMatrixWithAdjacency(traversalResult)[0];
+            // logMsg(features.length);
+            // logMsg(adj_lists.length);
+            updateEmbeddingsStatus(EmbeddingsStatus.FAILED, collectionName, destinationCollection, fieldName, modelMetadata);
+        } else {
+            throw TypeError("Model Invocation Input Type is not 'graph'.")
+        }
+    } catch (e) {
+        logErr(e);
         updateEmbeddingsStatus(EmbeddingsStatus.FAILED, collectionName, destinationCollection, fieldName, modelMetadata);
-    } else {
-        throw TypeError("Model Invocation Input Type is not 'graph'.")
     }
 }
 
