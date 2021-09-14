@@ -79,7 +79,7 @@ suite("Graph Embeddings results suite", () => {
             ]
         };
 
-        const res = flattenTraversalResult(input);
+        const res = flattenTraversalResult(input, 3);
         logMsg(res);
         expect(res).to.eql(expected);
 

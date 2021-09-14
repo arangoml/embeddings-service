@@ -92,7 +92,7 @@ const seedData = [
             },
             output: {
                 output_key: "output__1",
-                index: 499
+                index: 0
             }
         },
         data: [

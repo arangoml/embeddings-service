@@ -51,8 +51,10 @@ export function flattenTraversalResult(t: TraversalResult, number_of_hops: numbe
 
     for (let i = 0; i < number_of_hops; i++) {
         if (i > 0) {
-            const clone = Array.from(adj_lists[i - 1].map(m => Array.from(m)))
-            adj_lists[i].push(...clone);
+            if (adj_lists[i - 1] !== undefined) {
+                const clone = Array.from(adj_lists[i - 1].map(m => Array.from(m)))
+                adj_lists[i].push(...clone);
+            }
         }
     }
 
@@ -88,7 +90,7 @@ export function insertGraphEmbeddingsIntoDBSameCollection(docsWithKey: Traversal
 export function insertGraphEmbeddingsIntoDBSepCollection(docsWithKey: TraversalResult[], calculatedEmbeddings: number[][], fieldName: string, dCollection: Collection, modelMetadata: ModelMetadata) {
     const docs = docsWithKey.map((x, i) => {
         return {
-            "_key": x.node.field,
+            "_key": x.node._key,
             "embedding": calculatedEmbeddings[i],
             "emb_key": `emb_${x.node._key}`,
             "field_data": x.node.field

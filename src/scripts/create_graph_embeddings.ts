@@ -148,24 +148,43 @@ function formatGraphInputs(features: any[], adj_lists: number[][][], graphInput:
         datatype: "FP32"
     });
 
-    adj_lists.forEach((adj_list, i) => {
-        inputList.push({
-            name: graphInput.adjacency_list_input_keys[i],
-            data: transposeMatrix(adj_list),
-            shape: [2, adj_list.length],
-            datatype: "INT64"
-        });
-    })
+    for (let i = 0; i < graphInput.adjacency_list_input_keys.length; i++) {
+        if (i < adj_lists.length) {
+            inputList.push({
+                name: graphInput.adjacency_list_input_keys[i],
+                data: transposeMatrix(adj_lists[i]),
+                shape: [2, adj_lists[i].length],
+                datatype: "INT64"
+            });
+        } else {
+            inputList.push({
+                name: graphInput.adjacency_list_input_keys[i],
+                data: [],
+                shape: [2, 0],
+                datatype: "INT64"
+            });
+        }
+    }
 
     const adjacencySizes = createAdjacencySizes(adj_lists);
-    adjacencySizes.forEach((sizeMat, i) => {
-        inputList.push({
-            name: graphInput.adjacency_size_input_keys[i],
-            data: sizeMat,
-            shape: [2],
-            datatype: "INT64"
-        });
-    });
+
+    for (let i = 0; i < graphInput.adjacency_size_input_keys.length; i++) {
+        if (i < adjacencySizes.length) {
+            inputList.push({
+                name: graphInput.adjacency_size_input_keys[i],
+                data: adjacencySizes[i],
+                shape: [2],
+                datatype: "INT64"
+            });
+        } else {
+            inputList.push({
+                name: graphInput.adjacency_size_input_keys[i],
+                data: [0,0],
+                shape: [2],
+                datatype: "INT64"
+            });
+        }
+    }
 
     return {
         inputs: inputList
@@ -185,7 +204,7 @@ function extractEmbeddingsFromResponse(response_json: any, embedding_dim: number
         .filter((e: any) => e["name"] === invocationOutput.output_key)
         .map((e: any) => {
             const embeddings = chunkArray(e["data"], embedding_dim);
-            if (invocationOutput.index) {
+            if (invocationOutput.index !== undefined) {
                 return embeddings[invocationOutput.index];
             };
             throw Error("Graph Embeddings require index to be defined");
@@ -199,7 +218,7 @@ function getAndSaveGraphEmbeddingsForMiniBatch(docCollection: Collection, dColle
 
         // Foreach because of model only supporting batch size of 1 right now
         flattened.forEach((flatArr, i) => {
-            const res = profileCall(getTargetEmbedding)(input)(flatArr);
+            const res = profileCall(getTargetEmbedding(input))(flatArr);
             if (res.status === 200) {
                 const embedding = profileCall(extractEmbeddingsFromResponse)(res.body, modelMetadata.invocation.emb_dim, modelMetadata.invocation.output);
                 if (separateCollection) {
