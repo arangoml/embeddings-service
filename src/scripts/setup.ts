@@ -77,7 +77,7 @@ const seedData = [
         },
         invocation: {
             invocation_name: "graphsage_obgn_products",
-            emb_dim: 256,
+            emb_dim: 47,
             inference_batch_size: 1,
             input: {
                 kind: "graph",
@@ -91,7 +91,7 @@ const seedData = [
                 adjacency_size_input_keys: ["input__6", "input__4", "input__2"]
             },
             output: {
-                output_key: "output__1",
+                output_key: "output__2",
                 index: 0
             }
         },

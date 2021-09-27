@@ -1,5 +1,9 @@
 "use strict";
-import {updateStatusByCollectionDestinationAndEmbName, updateEmbeddingsStatusByKey} from "../db/embeddings_status";
+import {
+    updateStatusByCollectionDestinationAndEmbName,
+    updateEmbeddingsStatusByKey,
+    updateEmbeddingsStateSpecificDocuments
+} from "../db/embeddings_status";
 import {createStatus} from "../db/embeddings_status";
 import {getStatusesByCollectionDestinationAndEmbName} from "../db/embeddings_status";
 import {getEmbeddingsFieldName} from "./emb_collections_service";
@@ -44,10 +48,10 @@ export function getEmbeddingsStatusDict(collectionName: string, destinationColle
 /**
  * Get or create embeddings status. New embeddings status will be initialized to DOES_NOT_EXIST
  */
-export function getOrCreateEmbeddingsStatusDict(graphName: string, collectionName: string, destinationCollectionName: string, fieldName: string, modelMetadata: ModelMetadata): EmbeddingsState {
+export function getOrCreateEmbeddingsStatusDict(graphName: string, collectionName: string, destinationCollectionName: string, fieldName: string, modelMetadata: ModelMetadata, specificDocuments: string[] = []): EmbeddingsState {
     const res = getStatusesByCollectionDestinationAndEmbName(collectionName, destinationCollectionName, getEmbeddingsFieldName(fieldName, modelMetadata));
     if (res.length === 0) {
-        return createEmbeddingsStatus(graphName, collectionName, destinationCollectionName, fieldName, modelMetadata, EmbeddingsStatus.DOES_NOT_EXIST);
+        return createEmbeddingsStatus(graphName, collectionName, destinationCollectionName, fieldName, modelMetadata, specificDocuments, EmbeddingsStatus.DOES_NOT_EXIST);
     }
     return res[0];
 }
@@ -55,7 +59,7 @@ export function getOrCreateEmbeddingsStatusDict(graphName: string, collectionNam
 /**
  * Create a new status of how the embeddings generation is going.
  */
-export function createEmbeddingsStatus(graphName: string, collectionName: string, destinationCollectionName: string, fieldName: string, modelMetadata: ModelMetadata, startStatus = EmbeddingsStatus.DOES_NOT_EXIST): EmbeddingsState {
+export function createEmbeddingsStatus(graphName: string, collectionName: string, destinationCollectionName: string, fieldName: string, modelMetadata: ModelMetadata, specificDocuments: string[], startStatus = EmbeddingsStatus.DOES_NOT_EXIST,): EmbeddingsState {
     return createStatus(
         graphName,
         collectionName,
@@ -65,6 +69,7 @@ export function createEmbeddingsStatus(graphName: string, collectionName: string
         modelMetadata,
         startStatus,
         new Date().toISOString(),
+        specificDocuments
     );
 }
 
@@ -92,4 +97,12 @@ export function updateEmbeddingsStatusDict(embeddingsStatusDict: EmbeddingsState
         newStatus,
         new Date().toISOString()
     )
+}
+
+export function updateEmbeddingsStateWithSpecificDocuments(embeddingsState: EmbeddingsState, newSpecificDocuments: string[]): void {
+    updateEmbeddingsStateSpecificDocuments(
+        embeddingsState._key,
+        newSpecificDocuments,
+        new Date().toISOString()
+    );
 }

@@ -33,7 +33,7 @@ function initialValidationGenerateEmbParams(req: Request, res: Response): void {
 export function generateEmbeddings(req: Request, res: Response): void {
     initialValidationGenerateEmbParams(req, res);
 
-    const {modelName, modelType, fieldName, graphName, collectionName, separateCollection, overwriteExisting} = req.body;
+    const {modelName, modelType, fieldName, graphName, collectionName, separateCollection, overwriteExisting, documentKeys} = req.body;
 
     // Check if the arguments are valid, either for word embeddings or graph embeddings
     if (!checkCollectionIsPresent(collectionName)) {
@@ -55,7 +55,7 @@ export function generateEmbeddings(req: Request, res: Response): void {
     }
 
     const destinationCollectionName = profileCall(getDestinationCollectionName)(collectionName, separateCollection, modelMetadata);
-    const embStatusDict = profileCall(getOrCreateEmbeddingsStatusDict)(graphName, collectionName, destinationCollectionName, fieldName, modelMetadata);
-    const response_dict = profileCall(manageEmbeddingsForDocFieldAndModel)(embStatusDict, modelMetadata, overwriteExisting);
+    const embStatusDict = profileCall(getOrCreateEmbeddingsStatusDict)(graphName, collectionName, destinationCollectionName, fieldName, modelMetadata, documentKeys);
+    const response_dict = profileCall(manageEmbeddingsForDocFieldAndModel)(embStatusDict, modelMetadata, overwriteExisting, documentKeys);
     res.json(response_dict);
 }

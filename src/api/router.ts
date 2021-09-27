@@ -22,6 +22,7 @@ router.post("/generate_embeddings", generateEmbeddings)
             fieldName: joi.string().required(),
             separateCollection: joi.bool().default(true),
             overwriteExisting: joi.bool().default(false),
+            documentKeys: joi.array().items(joi.string()).default([])
         }).required(),
         // This seems to be encased in a "value" object in the swagger doc
         // .example([{
@@ -43,6 +44,9 @@ router.post("/generate_embeddings", generateEmbeddings)
          \twill be stored on the documents in the specified collection.
          \`overwriteExisting\`: \`false\` by default. If set to \`true\` then this will overwrite existing embeddings for the collection+field+model combination
          \t if it exists.
+         \`documentKeys\`: Specific list of documents to embed within a specified collection. This will only embed the specific documents and will not
+         \t embed/maintain embeddings for other documents, unless these documents are already embedded. If you would like to embed the remaining documents within a 
+         \t collection, then requesting generation without this key will remove the filter & embed the entire collection.
          `
     ).response(
         400,

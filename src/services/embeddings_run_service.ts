@@ -33,12 +33,24 @@ function createAndAddEmbeddingsRunCollectionSameCollection(embeddingsState: Embe
     const dCol = db._collection(embeddingsState["destination_collection"]);
     const embedding_field_name = embeddingsState["emb_field_name"];
     const sourceFieldName = embeddingsState["field_name"];
-    query`
-        FOR doc in ${dCol}
-          FILTER doc.${sourceFieldName} != null
-          FILTER doc.${embedding_field_name} == null
-          INSERT { _key: doc._key } INTO ${embeddingsRunCol}
-    `;
+    if (embeddingsState.specific_documents.length > 0) {
+        query`
+            LET specificDocuments = ${embeddingsState.specific_documents}
+            FOR sDoc in specificDocuments
+            FOR doc in ${dCol}
+                FILTER doc._key == sDoc
+                FILTER doc.${sourceFieldName} != null
+                FILTER doc.${embedding_field_name} == null
+                INSERT { _key: doc._key } INTO ${embeddingsRunCol}
+        `;
+    } else {
+        query`
+            FOR doc in ${dCol}
+              FILTER doc.${sourceFieldName} != null
+              FILTER doc.${embedding_field_name} == null
+              INSERT { _key: doc._key } INTO ${embeddingsRunCol}
+        `;
+    }
     return embeddingsRunCol.name();
 }
 
@@ -50,19 +62,38 @@ function createAndAddEmbeddingsRunCollectionSeparateCollection(embeddingsState: 
     const sourceFieldName = embeddingsState.field_name;
     const dCol = db._collection(embeddingsState.destination_collection);
     const embedding_field_name = embeddingsState.emb_field_name;
-    query`
-        FOR doc in ${sourceCol}
-          FILTER doc.${sourceFieldName} != null
-          LET emb_docs = (
-            FOR emb_d in ${dCol}
-              FILTER emb_d.doc_key == doc._key
-              FILTER emb_d.${embedding_field_name} != null
-              LIMIT 1
-              RETURN 1
-          )
-          FILTER LENGTH(emb_docs) == 0
-          INSERT { _key: doc._key } INTO ${embeddingsRunCol}
-    `;
+    if (embeddingsState.specific_documents.length > 0) {
+        query`
+            LET specificDocuments = ${embeddingsState.specific_documents}
+            FOR sDoc in specificDocuments
+            FOR doc in ${sourceCol}
+              FILTER doc._key == sDoc
+              FILTER doc.${sourceFieldName} != null
+              LET emb_docs = (
+                FOR emb_d in ${dCol}
+                  FILTER emb_d.doc_key == doc._key
+                  FILTER emb_d.${embedding_field_name} != null
+                  LIMIT 1
+                  RETURN 1
+              )
+              FILTER LENGTH(emb_docs) == 0
+              INSERT { _key: doc._key } INTO ${embeddingsRunCol}
+        `;
+    } else {
+        query`
+            FOR doc in ${sourceCol}
+              FILTER doc.${sourceFieldName} != null
+              LET emb_docs = (
+                FOR emb_d in ${dCol}
+                  FILTER emb_d.doc_key == doc._key
+                  FILTER emb_d.${embedding_field_name} != null
+                  LIMIT 1
+                  RETURN 1
+              )
+              FILTER LENGTH(emb_docs) == 0
+              INSERT { _key: doc._key } INTO ${embeddingsRunCol}
+        `;
+    }
     return embeddingsRunCol.name();
 }
 
@@ -72,11 +103,22 @@ function createAndAddEmbeddingsRunCollectionAllValidDocs(embeddingsState: Embedd
     const embeddingsRunCol = createEmbeddingsRunCollection(embeddingsState);
     const sourceCol = db._collection(embeddingsState.collection);
     const sourceFieldName = embeddingsState.field_name;
-    query`
-        FOR doc in ${sourceCol}
-          FILTER doc.${sourceFieldName} != null
-          INSERT { _key: doc._key } INTO ${embeddingsRunCol}
-    `;
+    if (embeddingsState.specific_documents.length > 0) {
+        query`
+        LET specificDocuments = ${embeddingsState.specific_documents} 
+        FOR sDoc in specificDocuments
+            FOR doc in ${sourceCol}
+              FILTER doc._key == sDoc
+              FILTER doc.${sourceFieldName} != null
+              INSERT { _key: doc._key } INTO ${embeddingsRunCol}
+        `;
+    } else {
+        query`
+            FOR doc in ${sourceCol}
+              FILTER doc.${sourceFieldName} != null
+              INSERT { _key: doc._key } INTO ${embeddingsRunCol}
+        `;
+    }
     return embeddingsRunCol.name();
 }
 

@@ -15,7 +15,6 @@ import {
     TraversalResult
 } from "../script_functions/graph_embeddings";
 import {profileCall} from "../utils/profiling";
-// import * as graph_module from "@arangodb/general-graph";
 
 const {argv} = module.context;
 
@@ -95,10 +94,6 @@ function buildGraphQuery(graphInput: GraphInput, graphName: string, targetDocs: 
             }
     `;
 }
-
-// function traversalResultToMatrixWithAdjacency(traversalResult: TraversalResult[]) {
-//     return traversalResult.map(res => flattenTraversalResult(res, 0));
-// }
 
 function padFeaturesMatrix(featuresMatrix: any[], expected_size: number) {
     // For a feature matrix, pad with zeros
@@ -246,7 +241,6 @@ function createGraphEmbeddings() {
             const graphInput: GraphInput = modelMetadata.invocation.input;
             chunkArray(targetIds, modelMetadata.invocation.inference_batch_size)
                 .forEach((chunk) => {
-                    console.log(chunk);
                     const query = buildGraphQuery(graphInput, graphName, chunk, docCollection);
                     const traversalResult = db._query(query).toArray();
                     chunkArray(traversalResult, modelMetadata.invocation.inference_batch_size)
