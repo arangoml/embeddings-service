@@ -1,4 +1,5 @@
 "use strict";
+const queues = require("@arangodb/foxx/queues");
 import {GenerationJobInputArgs} from "../utils/generation_job_input_args";
 import {aql, db, query} from "@arangodb";
 import Collection = ArangoDB.Collection;
@@ -15,7 +16,6 @@ import {
     TraversalResult
 } from "../script_functions/graph_embeddings";
 import {profileCall} from "../utils/profiling";
-import queues from "@arangodb/foxx/queues";
 import {EMB_QUEUE_NAME} from "../utils/embeddings_queue";
 import {queueBatch, ScriptName} from "../services/emb_generation_service";
 
