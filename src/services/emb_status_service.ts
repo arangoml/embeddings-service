@@ -2,7 +2,7 @@
 import {
     updateStatusByCollectionDestinationAndEmbName,
     updateEmbeddingsStatusByKey,
-    updateEmbeddingsStateSpecificDocuments
+    updateEmbeddingsStateSpecificDocuments, getStatusesByCollectionAndEmbName
 } from "../db/embeddings_status";
 import {createStatus} from "../db/embeddings_status";
 import {getStatusesByCollectionDestinationAndEmbName} from "../db/embeddings_status";
@@ -37,8 +37,8 @@ export function getEmbeddingsStatusDocId(collectionName: string, destinationColl
  * Get the entire embedding status entry. Returns `undefined` if not found
  */
 // TODO: Replace undefined
-export function getEmbeddingsStatusDict(collectionName: string, destinationCollectionName: string, fieldName: string, modelMetadata: ModelMetadata): EmbeddingsState | undefined {
-    const res = getStatusesByCollectionDestinationAndEmbName(collectionName, destinationCollectionName, getEmbeddingsFieldName(fieldName, modelMetadata))
+export function getEmbeddingsStateDict(collectionName: string, fieldName: string, modelMetadata: ModelMetadata): EmbeddingsState | undefined {
+    const res = getStatusesByCollectionAndEmbName(collectionName, getEmbeddingsFieldName(fieldName, modelMetadata))
     if (res.length === 0) {
         return undefined;
     }

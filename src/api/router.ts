@@ -5,9 +5,22 @@ import * as joi from "joi";
 import {listModels} from "../controllers/list_models";
 import {generateEmbeddings} from "../controllers/generate_embeddings";
 import {embeddingsStatusesForModel, embeddingsStatusById} from "../controllers/embeddings_status";
+import {retrieveEmbeddings} from "../controllers/retrieve_embeddings";
 import {ModelTypes} from "../model/model_metadata";
 
 export const router = createRouter();
+
+router.post("/embeddings", retrieveEmbeddings)
+    .body(
+        joi.object({
+            modelName: joi.string().required(),
+            modelType: joi.string().required().allow(Object.values(ModelTypes)),
+            collectionName: joi.string().required(),
+            fieldName: joi.string().required(),
+            documentKeys: joi.array().items(joi.string()).required(),
+            fullDocuments: joi.bool().default(true)
+        })
+    );
 
 router.post("/generate_embeddings", generateEmbeddings)
     .body(
