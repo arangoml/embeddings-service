@@ -1,7 +1,7 @@
 "use strict";
 
 import {EmbeddingsState, EmbeddingsStatus} from "../model/embeddings_status";
-import {pruneEmbeddings, getCountDocumentsWithoutEmbedding} from "./emb_collections_service";
+import {getCountDocumentsWithoutEmbedding, pruneEmbeddings} from "./emb_collections_service";
 import {updateEmbeddingsStateWithSpecificDocuments, updateEmbeddingsStatusDict} from "./emb_status_service";
 import {generateBatchesForModel} from "./emb_generation_service";
 import {embeddingsTargetsAreValid} from "../utils/embeddings_target";
@@ -66,8 +66,8 @@ export function manageEmbeddingsForDocFieldAndModel(embeddingsState: EmbeddingsS
     let response_dict: { [key: string]: string } = {};
 
     if (embeddingsTargetsAreValid(embeddingsState["graph_name"], embeddingsState["collection"])) {
-        if (specificDocuments) {
-            if (embeddingsState.specific_documents.length > 0) {
+        if (specificDocuments !== undefined) {
+            if (embeddingsState.specific_documents.length > 0 && embeddingsState.status !== EmbeddingsStatus.DOES_NOT_EXIST) {
                 if (specificDocuments.length > 0) {
                     // Then expand the documents here
                     embeddingsState.specific_documents.push(...specificDocuments);

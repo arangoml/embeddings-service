@@ -2,9 +2,9 @@
 import {GenerationJobInputArgs} from "../utils/generation_job_input_args";
 import {aql, db, query} from "@arangodb";
 import Collection = ArangoDB.Collection;
-import {GraphInput, InvocationOutput} from "../model/model_metadata";
+import {GraphInput, InvocationOutput, ModelMetadata} from "../model/model_metadata";
 import {logErr} from "../utils/logging";
-import {updateEmbeddingsStatus} from "../services/emb_status_service";
+import {getEmbeddingsStatus, updateEmbeddingsStatus} from "../services/emb_status_service";
 import {EmbeddingsStatus} from "../model/embeddings_status";
 import {transposeMatrix} from "../utils/matrix";
 import {chunkArray, invokeEmbeddingModel} from "../utils/invocation";
@@ -15,6 +15,9 @@ import {
     TraversalResult
 } from "../script_functions/graph_embeddings";
 import {profileCall} from "../utils/profiling";
+import queues from "@arangodb/foxx/queues";
+import {EMB_QUEUE_NAME} from "../utils/embeddings_queue";
+import {queueBatch, ScriptName} from "../services/emb_generation_service";
 
 const {argv} = module.context;
 
@@ -229,6 +232,16 @@ function getAndSaveGraphEmbeddingsForMiniBatch(docCollection: Collection, dColle
     };
 }
 
+function handleFailure(currentBatchFailed: boolean, isTheLastBatch: boolean, collectionName: string, destinationCollectionName: string, fieldName: string, modelMetadata: ModelMetadata): void {
+    if (currentBatchFailed) {
+        updateEmbeddingsStatus(EmbeddingsStatus.RUNNING_FAILED, collectionName, destinationCollectionName, fieldName, modelMetadata);
+    }
+
+    if (isTheLastBatch) {
+        updateEmbeddingsStatus(EmbeddingsStatus.FAILED, collectionName, destinationCollectionName, fieldName, modelMetadata);
+    }
+}
+
 function createGraphEmbeddings() {
     const docCollection = db._collection(collectionName);
     const dCollection = db._collection(destinationCollection);
@@ -246,6 +259,14 @@ function createGraphEmbeddings() {
                     chunkArray(traversalResult, modelMetadata.invocation.inference_batch_size)
                         .forEach(getAndSaveGraphEmbeddingsForMiniBatch(docCollection, dCollection, graphInput));
                 });
+
+            if (isLastBatch) {
+                if (getEmbeddingsStatus(collectionName, destinationCollection, fieldName, modelMetadata) === EmbeddingsStatus.RUNNING_FAILED) {
+                    handleFailure(false, isLastBatch, collectionName, destinationCollection, fieldName, modelMetadata);
+                } else {
+                    updateEmbeddingsStatus(EmbeddingsStatus.COMPLETED, collectionName, destinationCollection, fieldName, modelMetadata);
+                }
+            }
             updateEmbeddingsStatus(EmbeddingsStatus.FAILED, collectionName, destinationCollection, fieldName, modelMetadata);
         } else {
             throw TypeError("Model Invocation Input Type is not 'graph'.")
@@ -253,6 +274,28 @@ function createGraphEmbeddings() {
     } catch (e) {
         logErr(e);
         updateEmbeddingsStatus(EmbeddingsStatus.FAILED, collectionName, destinationCollection, fieldName, modelMetadata);
+    }
+
+    // No matter what, queue the next batch
+    if (!isLastBatch) {
+        const q = queues.get(EMB_QUEUE_NAME);
+        queueBatch(ScriptName.GRAPH,
+            batchIndex + 1,
+            batchSize,
+            numberOfBatches,
+            (batchOffset + batchSize),
+            null,
+            collectionName,
+            fieldName,
+            modelMetadata,
+            q,
+            destinationCollection,
+            separateCollection,
+            embeddingsRunColName
+        );
+    } else {
+        // If it's the last batch, then we can drop the embeddingsRun collection
+        db._collection(embeddingsRunColName).drop();
     }
 }
 
