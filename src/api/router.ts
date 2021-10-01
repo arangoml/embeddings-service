@@ -1,5 +1,7 @@
 "use strict";
 
+import {retrieveNearestNeighbors} from "../controllers/retrieve_nearest_neighbors";
+
 const createRouter = require("@arangodb/foxx/router");
 import * as joi from "joi";
 import {listModels} from "../controllers/list_models";
@@ -19,6 +21,19 @@ router.post("/embeddings", retrieveEmbeddings)
             fieldName: joi.string().required(),
             documentKeys: joi.array().items(joi.string()).required(),
             fullDocuments: joi.bool().default(true)
+        })
+    );
+
+router.post("/nearest_neighbors", retrieveNearestNeighbors)
+    .body(
+        joi.object({
+            modelName: joi.string().required(),
+            modelType: joi.string().required().allow(Object.values(ModelTypes)),
+            collectionName: joi.string().required(),
+            fieldName: joi.string().required(),
+            documentKey: joi.string().required(),
+            fullDocuments: joi.bool().default(true),
+            numberOfNeighbors: joi.number().required()
         })
     );
 

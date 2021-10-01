@@ -1,10 +1,12 @@
 "use strict";
+import {embeddingsTargetsAreValid} from "../utils/embeddings_target";
+
 const queues = require("@arangodb/foxx/queues");
 import {GenerationJobInputArgs} from "../utils/generation_job_input_args";
 import {aql, db, query} from "@arangodb";
 import Collection = ArangoDB.Collection;
 import {GraphInput, InvocationOutput, ModelMetadata} from "../model/model_metadata";
-import {logErr} from "../utils/logging";
+import {logErr, logMsg} from "../utils/logging";
 import {getEmbeddingsStatus, updateEmbeddingsStatus} from "../services/emb_status_service";
 import {EmbeddingsStatus} from "../model/embeddings_status";
 import {transposeMatrix} from "../utils/matrix";
@@ -132,17 +134,18 @@ function createAdjacencySizes(adj_lists: number[][][], startIndex: number = 0) {
     });
 }
 
-function formatGraphInputs(features: any[], adj_lists: number[][][], graphInput: GraphInput) {
+function formatGraphInputs(features: any[][], adj_lists: number[][][], graphInput: GraphInput) {
     // TODO: Make this generalize across N > 1 batches!!
     // Now put it all together
     const inputList = [];
+    const batchSize = features.length;
 
-    const paddedFeatures = padFeaturesMatrix(features, 1000);
+    const paddedFeatures = features.map(feats => padFeaturesMatrix(feats, 1000));
 
     inputList.push({
         name: graphInput.features_input_key,
         data: paddedFeatures,
-        shape: [paddedFeatures.length, paddedFeatures[0].length],
+        shape: [batchSize, paddedFeatures[0].length, paddedFeatures[0][0].length],
         datatype: "FP32"
     });
 
@@ -151,7 +154,7 @@ function formatGraphInputs(features: any[], adj_lists: number[][][], graphInput:
             inputList.push({
                 name: graphInput.adjacency_list_input_keys[i],
                 data: transposeMatrix(adj_lists[i]),
-                shape: [2, adj_lists[i].length],
+                shape: [batchSize, 2, adj_lists[i].length],
                 datatype: "INT64"
             });
         } else {
@@ -249,7 +252,6 @@ function createGraphEmbeddings() {
     const targetIds = getTargetDocumentIds(batchSize, batchOffset, docCollection, embeddingsRunCol, fieldName);
 
     try {
-        // const graph = graph_module._graph(graphName);
         if (modelMetadata.invocation.input.kind == "graph") {
             const graphInput: GraphInput = modelMetadata.invocation.input;
             chunkArray(targetIds, modelMetadata.invocation.inference_batch_size)
@@ -284,7 +286,7 @@ function createGraphEmbeddings() {
             batchSize,
             numberOfBatches,
             (batchOffset + batchSize),
-            null,
+            graphName,
             collectionName,
             fieldName,
             modelMetadata,
@@ -299,4 +301,8 @@ function createGraphEmbeddings() {
     }
 }
 
-createGraphEmbeddings();
+if (!embeddingsTargetsAreValid(graphName, collectionName)) {
+    logMsg(`Combination of Embeddings target collection ${collectionName} and graph ${graphName} is no longer valid. Aborting generation...`);
+} else {
+    profileCall(createGraphEmbeddings)();
+}
