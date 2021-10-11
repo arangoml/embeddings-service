@@ -10,7 +10,7 @@ import {metadataCollectionName, ModelMetadata, ModelTypes} from "../model/model_
  * @param modelType
  * @returns {null|*}
  */
-export function retrieveModel(modelName: string, modelType: ModelTypes) {
+export function retrieveModel(modelName: string, modelType: ModelTypes): ModelMetadata | null {
     const metadata_col = db._collection(metadataCollectionName);
     const model_info = query`
         FOR m in ${metadata_col}

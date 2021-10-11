@@ -9,7 +9,7 @@ import {GraphInput, InvocationOutput, ModelMetadata} from "../model/model_metada
 import {logErr, logMsg} from "../utils/logging";
 import {getEmbeddingsStatus, updateEmbeddingsStatus} from "../services/emb_status_service";
 import {EmbeddingsStatus} from "../model/embeddings_status";
-import {transposeMatrix} from "../utils/matrix";
+import {transposeMatrix} from "../utils/math";
 import {chunkArray, invokeEmbeddingModel} from "../utils/invocation";
 import {context} from "@arangodb/locals";
 import {

@@ -3,7 +3,7 @@ import {findNearestNeighborEmbeddingsForDocumentKey, getEmbeddingsForDocumentKey
 import {ModelMetadata} from "../model/model_metadata";
 
 interface EmbeddingObject {
-
+    embedding: number[]
 };
 
 interface NeighborsObject {};

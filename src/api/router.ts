@@ -21,6 +21,7 @@ router.post("/embeddings", retrieveEmbeddings)
             fieldName: joi.string().required(),
             documentKeys: joi.array().items(joi.string()).required(),
             fields: joi.array().default([]),
+            labelMapping: joi.array().items(joi.string()),
             fullDocuments: joi.bool().default(false)
         })
     );

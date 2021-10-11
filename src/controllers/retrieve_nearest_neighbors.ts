@@ -20,13 +20,13 @@ export function retrieveNearestNeighbors(req: Request, res: Response): void {
     if (modelMetadata == null) {
         sendInvalidInputMessage(res,
             `Invalid model: ${modelName} of type ${modelType}`);
-    }
-
-    const embStatusDict = getEmbeddingsStateDict(collectionName, fieldName, modelMetadata);
-    if (embStatusDict !== undefined) {
-        const embeddings = getNearestNeighborsForKey(embStatusDict, modelMetadata, documentKey, fullDocuments, numberOfNeighbors, fields);
-        res.json(embeddings);
     } else {
-        sendInvalidInputMessage(res, "These embeddings don't exist!")
+        const embStatusDict = getEmbeddingsStateDict(collectionName, fieldName, modelMetadata);
+        if (embStatusDict !== undefined) {
+            const embeddings = getNearestNeighborsForKey(embStatusDict, modelMetadata, documentKey, fullDocuments, numberOfNeighbors, fields);
+            res.json(embeddings);
+        } else {
+            sendInvalidInputMessage(res, "These embeddings don't exist!")
+        }
     }
 };
