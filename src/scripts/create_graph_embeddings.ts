@@ -25,9 +25,8 @@ const {argv} = module.context;
 
 const {batchIndex, batchSize, batchOffset, numberOfBatches, collectionName, destinationCollection, graphName, modelMetadata, fieldName, embeddingsRunColName, separateCollection}: GenerationJobInputArgs = argv[0];
 const isLastBatch = (batchIndex >= (numberOfBatches - 1));
-console.log(isLastBatch);
 
-console.log(`Create graph/traversal based embeddings for batch ${batchIndex} of size ${batchSize} in collection ${collectionName} 
+logMsg(`Create graph/traversal based embeddings for batch ${batchIndex} of size ${batchSize} in collection ${collectionName} 
 in graph ${graphName} using ${modelMetadata.name} on the ${fieldName} field`);
 
 function getTargetDocumentIds(nDocs: number, startInd: number, docCollection: Collection, embeddingsRunCol: Collection, fieldToEmbed: string): any[] {

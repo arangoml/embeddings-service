@@ -6,30 +6,47 @@ export function getEmbeddingsForDocumentKeys(
     embeddingsCollectionName: string,
     documentKeys: string[],
     fullDocuments: boolean,
-    embeddingFieldName: string
+    embeddingFieldName: string,
+    fields: string[]
 ) {
     const documentCollection = db._collection(documentCollectionName);
+    const returnStatementArr = [];
     if (documentCollectionName !== embeddingsStatusCollectionName) {
-        const embeddingsCollection = db._collection(embeddingsCollectionName);
-        return query`
-            LET documentKeys = ${documentKeys}
-            FOR docKey IN documentKeys
-                FOR doc IN ${documentCollection}
-                    FILTER doc._key == docKey
-                    LET cor = FIRST(
-                        FOR embDoc in ${embeddingsCollection}
+        returnStatementArr.push(
+            aql`
+            LET cor = FIRST(
+                        FOR embDoc in ${db._collection(embeddingsCollectionName)}
                             FILTER embDoc.doc_key == doc._key
                             RETURN embDoc
                     )
-                    RETURN ${aql.literal(fullDocuments)} ?
-                        MERGE([
-                            doc,
-                            { embedding: cor[${embeddingFieldName}] }
-                        ]) : {
-                            document_key: doc._key,
-                            embedding: cor[${embeddingFieldName}]
-                        }
-        `.toArray();
+            `
+        );
+        if (fullDocuments) {
+            returnStatementArr.push(aql`
+                RETURN MERGE([
+                    doc,
+                    { embedding: cor[${embeddingFieldName}] }
+                ])
+            `);
+        } else {
+            returnStatementArr.push(aql`
+                RETURN {
+                    embedding: cor[${embeddingFieldName}],
+                    ${aql.join([aql`document_key: doc._key`, ...fields.map(fname => aql`${fname}: doc.${fname}`)], ",")}
+                }
+            `)
+        }
+    } else {
+        if (fullDocuments) {
+            returnStatementArr.push(aql`RETURN doc`);
+        } else {
+            returnStatementArr.push(aql`
+                RETURN {
+                    embedding: doc[${embeddingFieldName}],
+                    ${aql.join([aql`document_key: doc._key`, ...fields.map(fname => aql`${fname}: doc.${fname}`)], ",")}
+                }
+            `);
+        }
     }
 
     return query`
@@ -37,11 +54,7 @@ export function getEmbeddingsForDocumentKeys(
         FOR docKey IN documentKeys
             FOR doc IN ${documentCollection}
                 FILTER doc._key == docKey
-                RETURN ${aql.literal(fullDocuments)} ?
-                    doc : {
-                        document_key: doc._key,
-                        embedding: doc[${embeddingFieldName}]
-                    }
+                ${aql.join(returnStatementArr)}
     `.toArray();
 }
 

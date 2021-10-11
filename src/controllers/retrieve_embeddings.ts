@@ -7,7 +7,7 @@ import {getEmbeddingsStateDict} from "../services/emb_status_service";
 import {getEmbeddingsForKeys} from "../services/emb_retrieval_service";
 
 export function retrieveEmbeddings(req: Request, res: Response): void {
-    const {modelName, modelType, fieldName, collectionName, documentKeys, fullDocuments} = req.body;
+    const {modelName, modelType, fieldName, collectionName, documentKeys, fullDocuments, fields} = req.body;
     // Check if the arguments are valid, either for word embeddings or graph embeddings
     if (!checkCollectionIsPresent(collectionName)) {
         sendInvalidInputMessage(res,
@@ -24,7 +24,7 @@ export function retrieveEmbeddings(req: Request, res: Response): void {
 
     const embStatusDict = getEmbeddingsStateDict(collectionName, fieldName, modelMetadata);
     if (embStatusDict !== undefined) {
-        const embeddings = getEmbeddingsForKeys(embStatusDict, documentKeys, fullDocuments);
+        const embeddings = getEmbeddingsForKeys(embStatusDict, documentKeys, fullDocuments, fields);
         res.json(embeddings);
     } else {
         sendInvalidInputMessage(res, "These embeddings don't exist!")

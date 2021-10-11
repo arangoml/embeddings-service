@@ -8,11 +8,11 @@ interface EmbeddingObject {
 
 interface NeighborsObject {};
 
-export function getEmbeddingsForKeys(embStateDict: EmbeddingsState, documentKeys: string[], fullDocuments: boolean): { embeddings: EmbeddingObject[], possiblyStale: boolean }{
+export function getEmbeddingsForKeys(embStateDict: EmbeddingsState, documentKeys: string[], fullDocuments: boolean, fields: string[]): { embeddings: EmbeddingObject[], possiblyStale: boolean }{
     //
     const couldBeStale = embStateDict.status !== EmbeddingsStatus.COMPLETED;
     return {
-        embeddings: getEmbeddingsForDocumentKeys(embStateDict.collection, embStateDict.destination_collection, documentKeys, fullDocuments, embStateDict.emb_field_name),
+        embeddings: getEmbeddingsForDocumentKeys(embStateDict.collection, embStateDict.destination_collection, documentKeys, fullDocuments, embStateDict.emb_field_name, fields),
         possiblyStale: couldBeStale
     };
 }

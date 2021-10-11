@@ -20,7 +20,8 @@ router.post("/embeddings", retrieveEmbeddings)
             collectionName: joi.string().required(),
             fieldName: joi.string().required(),
             documentKeys: joi.array().items(joi.string()).required(),
-            fullDocuments: joi.bool().default(true)
+            fields: joi.array().default([]),
+            fullDocuments: joi.bool().default(false)
         })
     );
 
@@ -32,7 +33,7 @@ router.post("/nearest_neighbors", retrieveNearestNeighbors)
             collectionName: joi.string().required(),
             fieldName: joi.string().required(),
             documentKey: joi.string().required(),
-            fullDocuments: joi.bool().default(true),
+            fullDocuments: joi.bool().default(false),
             numberOfNeighbors: joi.number().required()
         })
     );
