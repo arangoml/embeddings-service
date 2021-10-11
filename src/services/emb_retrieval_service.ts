@@ -17,11 +17,11 @@ export function getEmbeddingsForKeys(embStateDict: EmbeddingsState, documentKeys
     };
 }
 
-export function getNearestNeighborsForKey(embStateDict: EmbeddingsState, modelMetadata: ModelMetadata, documentKey: string, fullDocuments: boolean, numberOfNeighbors: number): { embeddings: NeighborsObject, possiblyStale: boolean }{
+export function getNearestNeighborsForKey(embStateDict: EmbeddingsState, modelMetadata: ModelMetadata, documentKey: string, fullDocuments: boolean, numberOfNeighbors: number, fields: string[]): { embeddings: NeighborsObject, possiblyStale: boolean }{
     //
     const couldBeStale = embStateDict.status !== EmbeddingsStatus.COMPLETED;
     return {
-        embeddings: findNearestNeighborEmbeddingsForDocumentKey(embStateDict.collection, embStateDict.destination_collection, documentKey, fullDocuments, embStateDict.emb_field_name, modelMetadata.invocation.emb_dim, numberOfNeighbors),
+        embeddings: findNearestNeighborEmbeddingsForDocumentKey(embStateDict.collection, embStateDict.destination_collection, documentKey, fullDocuments, fields, embStateDict.emb_field_name, modelMetadata.invocation.emb_dim, numberOfNeighbors),
         possiblyStale: couldBeStale
     };
 }

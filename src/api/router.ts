@@ -34,6 +34,7 @@ router.post("/nearest_neighbors", retrieveNearestNeighbors)
             fieldName: joi.string().required(),
             documentKey: joi.string().required(),
             fullDocuments: joi.bool().default(false),
+            fields: joi.array().default([]),
             numberOfNeighbors: joi.number().required()
         })
     );

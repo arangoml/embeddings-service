@@ -7,7 +7,7 @@ import {getEmbeddingsStateDict} from "../services/emb_status_service";
 import {getNearestNeighborsForKey} from "../services/emb_retrieval_service";
 
 export function retrieveNearestNeighbors(req: Request, res: Response): void {
-    const {modelName, modelType, fieldName, collectionName, documentKey, fullDocuments, numberOfNeighbors} = req.body;
+    const {modelName, modelType, fieldName, collectionName, documentKey, fullDocuments, numberOfNeighbors, fields} = req.body;
     // Check if the arguments are valid, either for word embeddings or graph embeddings
     if (!checkCollectionIsPresent(collectionName)) {
         sendInvalidInputMessage(res,
@@ -24,7 +24,7 @@ export function retrieveNearestNeighbors(req: Request, res: Response): void {
 
     const embStatusDict = getEmbeddingsStateDict(collectionName, fieldName, modelMetadata);
     if (embStatusDict !== undefined) {
-        const embeddings = getNearestNeighborsForKey(embStatusDict, modelMetadata, documentKey, fullDocuments, numberOfNeighbors);
+        const embeddings = getNearestNeighborsForKey(embStatusDict, modelMetadata, documentKey, fullDocuments, numberOfNeighbors, fields);
         res.json(embeddings);
     } else {
         sendInvalidInputMessage(res, "These embeddings don't exist!")
