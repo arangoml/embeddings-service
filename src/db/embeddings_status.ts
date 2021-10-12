@@ -39,8 +39,7 @@ export function getStatusesByCollectionDestinationAndEmbName(collectionName: str
     `.toArray();
 }
 
-// TODO: Remove Any from signature
-export function createStatus(graphName: string, collectionName: string, destinationCollectionName: string, embeddingsFieldName: string, fieldName: string, modelMetadata: any, status: EmbeddingsStatus, timestamp: string): EmbeddingsState {
+export function createStatus(graphName: string, collectionName: string, destinationCollectionName: string, embeddingsFieldName: string, fieldName: string, modelMetadata: any, status: EmbeddingsStatus, timestamp: string, specificDocuments: string[]): EmbeddingsState {
     const col = db._collection(embeddingsStatusCollectionName);
     if (graphName !== undefined && graphName.length > 0) {
         return query`
@@ -53,7 +52,8 @@ export function createStatus(graphName: string, collectionName: string, destinat
             emb_field_name: ${embeddingsFieldName},
             field_name: ${fieldName},
             status: ${status},
-            last_run_timestamp: ${timestamp}
+            last_run_timestamp: ${timestamp},
+            specific_documents: ${specificDocuments}
         } INTO ${col} RETURN NEW
         `.toArray()[0];
     } else {
@@ -66,7 +66,8 @@ export function createStatus(graphName: string, collectionName: string, destinat
             emb_field_name: ${embeddingsFieldName},
             field_name: ${fieldName},
             status: ${status},
-            last_run_timestamp: ${timestamp}
+            last_run_timestamp: ${timestamp},
+            specific_documents: ${specificDocuments}
         } INTO ${col} RETURN NEW
         `.toArray()[0];
     }
@@ -93,6 +94,18 @@ export function updateEmbeddingsStatusByKey(embeddingsStatusKey: string, newStat
         FILTER d._key == ${embeddingsStatusKey}
         UPDATE d._key WITH {
             status: ${newStatus},
+            last_run_timestamp: ${timestamp} 
+        } IN ${col} RETURN NEW
+    `.toArray()[0];
+}
+
+export function updateEmbeddingsStateSpecificDocuments(embeddingsStatusKey: string, newSpecificDocuments: string[], timestamp: string): EmbeddingsState {
+    const col = db._collection(embeddingsStatusCollectionName);
+    return query`
+    FOR d in ${col}
+        FILTER d._key == ${embeddingsStatusKey}
+        UPDATE d._key WITH {
+            specific_documents: ${newSpecificDocuments},
             last_run_timestamp: ${timestamp} 
         } IN ${col} RETURN NEW
     `.toArray()[0];

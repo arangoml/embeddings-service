@@ -14,17 +14,18 @@ export function embeddingsStatusesForModel(req: Request, res: Response): void {
     if (modelMetadata == null) {
         sendInvalidInputMessage(res,
             `Invalid model: ${modelName} of type ${modelType}`);
-    }
+    } else {
 
-    const statuses = getStatusesByCollectionAndEmbName(
-        collectionName,
-        getEmbeddingsFieldName(fieldName, modelMetadata)
-    );
+        const statuses = getStatusesByCollectionAndEmbName(
+            collectionName,
+            getEmbeddingsFieldName(fieldName, modelMetadata)
+        );
 
-    if (statuses.length === 0) {
-        res.throw(404, "Status not found");
+        if (statuses.length === 0) {
+            res.throw(404, "Status not found");
+        }
+        res.json(statuses);
     }
-    res.json(statuses);
 }
 
 export function embeddingsStatusById(req: Request, res: Response): void {

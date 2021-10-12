@@ -1,7 +1,6 @@
 "use strict";
 import Collection = ArangoDB.Collection;
 
-const request = require("@arangodb/request");
 const queues = require("@arangodb/foxx/queues");
 import {query, db} from "@arangodb";
 import {profileCall} from "../utils/profiling";
@@ -16,6 +15,7 @@ import {EMB_QUEUE_NAME} from "../utils/embeddings_queue";
 import {embeddingsTargetsAreValid} from "../utils/embeddings_target";
 import {ModelMetadata} from "../model/model_metadata";
 import {GenerationJobInputArgs} from "../utils/generation_job_input_args";
+import {chunkArray, invokeEmbeddingModel} from "../utils/invocation";
 
 const {argv} = module.context;
 
@@ -27,7 +27,7 @@ const MAX_RETRIES = 5;
 interface TargetDocument {
     _key: string;
     field: any
-};
+}
 
 function getDocumentsToEmbed(nDocs: number, startInd: number, docCollection: Collection, embeddingsRunCol: Collection, fieldToEmbed: string): TargetDocument[] {
     return query`
@@ -56,31 +56,9 @@ function formatBatch(batchData: any[]) {
     };
 }
 
-function invokeEmbeddingModel(dataToEmbed: any[]) {
-    const embeddingsServiceUrl = `${context.configuration.embeddingService}/v2/models/${modelMetadata.invocation_name}/infer`;
-    let tries = 0;
-    let res = {"status": -1};
-
-    while (res.status !== 200 && tries < MAX_RETRIES) {
-        const now = new Date().getTime();
-        while (new Date().getTime() < now + tries) {
-            // NOP
-        }
-
-        res = request.post(embeddingsServiceUrl, {
-            body: formatBatch(dataToEmbed),
-            json: true
-        });
-        tries++;
-    }
-    return res;
-}
-
-function chunkArray(array: any[], chunk_size: number) {
-    return Array(Math.ceil(array.length / chunk_size))
-        .fill(0)
-        .map((_, i) => i * chunk_size)
-        .map(begin => array.slice(begin, begin + chunk_size));
+function callModel(dataToEmbed: any[]) {
+    const requestBody = formatBatch(dataToEmbed);
+    return invokeEmbeddingModel(requestBody, context.configuration.embeddingService, modelMetadata.invocation.invocation_name, MAX_RETRIES);
 }
 
 function extractEmbeddingsFromResponse(response_json: any, embedding_dim: number) {
@@ -169,11 +147,11 @@ function handleFailure(currentBatchFailed: boolean, isTheLastBatch: boolean, col
 function getAndSaveNodeEmbeddingsForMiniBatch(collection: Collection, dCollection: Collection): (miniBatch: TargetDocument[]) => void {
     return function (miniBatch: TargetDocument[]) {
         const requestData = miniBatch.map(x => x.field);
-        const res = profileCall(invokeEmbeddingModel)(requestData);
+        const res = profileCall(callModel)(requestData);
 
         if (res.status === 200) {
             logTimeElapsed(res.body);
-            const embeddings = profileCall(extractEmbeddingsFromResponse)(res.body, modelMetadata.metadata.emb_dim);
+            const embeddings = profileCall(extractEmbeddingsFromResponse)(res.body, modelMetadata.invocation.emb_dim);
             if (separateCollection) {
                 profileCall(insertEmbeddingsIntoDBSepCollection)(miniBatch, embeddings, fieldName, dCollection, modelMetadata);
             } else {
@@ -203,7 +181,7 @@ function createNodeEmbeddings(): void {
             batchSize, batchOffset, collection, embeddingsRunCol, fieldName
         );
 
-        chunkArray(toEmbed, modelMetadata.metadata.inference_batch_size)
+        chunkArray(toEmbed, modelMetadata.invocation.inference_batch_size)
             .forEach(getAndSaveNodeEmbeddingsForMiniBatch(collection, dCollection));
 
         if (isLastBatch) {

@@ -1,8 +1,8 @@
 "use strict";
 
 import {EmbeddingsState, EmbeddingsStatus} from "../model/embeddings_status";
-import {pruneEmbeddings, getCountDocumentsWithoutEmbedding} from "./emb_collections_service";
-import {updateEmbeddingsStatusDict} from "./emb_status_service";
+import {getCountDocumentsWithoutEmbedding, pruneEmbeddings} from "./emb_collections_service";
+import {updateEmbeddingsStateWithSpecificDocuments, updateEmbeddingsStatusDict} from "./emb_status_service";
 import {generateBatchesForModel} from "./emb_generation_service";
 import {embeddingsTargetsAreValid} from "../utils/embeddings_target";
 import {ModelMetadata} from "../model/model_metadata";
@@ -62,11 +62,26 @@ function determineGenerationNeededForStatus(embeddingsState: EmbeddingsState, ov
     };
 }
 
-export function manageEmbeddingsForDocFieldAndModel(embeddingsState: EmbeddingsState, modelMetadata: ModelMetadata, overwriteExisting: boolean): { [key: string]: string } {
+export function manageEmbeddingsForDocFieldAndModel(embeddingsState: EmbeddingsState, modelMetadata: ModelMetadata, overwriteExisting: boolean, specificDocuments?: string[]): { [key: string]: string } {
     let response_dict: { [key: string]: string } = {};
 
-    // TODO: Decide on behavior if embeddings are no longer valid (e.g. the graph or collection has been deleted)
     if (embeddingsTargetsAreValid(embeddingsState["graph_name"], embeddingsState["collection"])) {
+        if (specificDocuments !== undefined) {
+            if (embeddingsState.specific_documents.length > 0 && embeddingsState.status !== EmbeddingsStatus.DOES_NOT_EXIST) {
+                if (specificDocuments.length > 0) {
+                    // Then expand the documents here
+                    embeddingsState.specific_documents.push(...specificDocuments);
+                    embeddingsState.specific_documents = embeddingsState.specific_documents
+                        .filter((value, index, specificDocsArr) => specificDocsArr.indexOf(value) === index);
+                } else {
+                    // If the specific documents is empty, then widen scope to all documents
+                    embeddingsState.specific_documents = [];
+                }
+                updateEmbeddingsStateWithSpecificDocuments(embeddingsState, embeddingsState.specific_documents);
+            }
+            // Otherwise this is a NO-OP because we don't want to narrow the scope of the documents
+        }
+
         pruneEmbeddingsIfNeeded(embeddingsState, overwriteExisting);
 
         const {shouldGenerate, message} = determineGenerationNeededForStatus(embeddingsState, overwriteExisting);
@@ -82,7 +97,7 @@ export function manageEmbeddingsForDocFieldAndModel(embeddingsState: EmbeddingsS
             }
         }
     } else {
-        // NOP for now
+        // NOP for now if target collections/graphs are in an invalid state
         response_dict["message"] = "Target Documents are in an invalid state, please check your DB";
     }
 

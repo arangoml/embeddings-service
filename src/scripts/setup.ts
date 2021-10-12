@@ -3,7 +3,7 @@
 import Collection = ArangoDB.Collection;
 
 const db = require("@arangodb").db;
-import {ModelTypes, metadataCollectionName, modelMetadataSchema} from "../model/model_metadata";
+import {ModelTypes, metadataCollectionName, modelMetadataSchema, FieldType} from "../model/model_metadata";
 import {embeddingsStatusCollectionName, embeddingsStatusSchema} from "../model/embeddings_status";
 import {pushManagementQueueJob, getBackgroundManagementQueue} from "../services/collections_management_service";
 import {logMsg} from "../utils/logging";
@@ -34,8 +34,20 @@ const seedData = [
             version: "1.9.0"
         },
         website: "https://www.sbert.net/docs/pretrained_models.html",
-        // This is the name that this model will have on the compute node. May differ from display name
-        invocation_name: "word_embeddings",
+        invocation: {
+            // This is the name that this model will have on the compute node. May differ from display name
+            invocation_name: "word_embeddings",
+            emb_dim: 768,
+            inference_batch_size: 64,
+            input: {
+                kind: "field",
+                field_type: FieldType.TEXT,
+                input_key: "INPUT0"
+            },
+            output: {
+                output_key: "OUTPUT0"
+            }
+        },
         data: [ // A list of the datasets that were used during training
             // modification of the MLSpec - MLSpec has a single data source specified
             // {
@@ -50,8 +62,6 @@ const seedData = [
             // }
         ],
         metadata: {
-            emb_dim: 768,
-            inference_batch_size: 64,
             schema: {
                 type: "RAW/TEXT",
             }
@@ -59,13 +69,32 @@ const seedData = [
     },
     {
         model_type: ModelTypes.GRAPH_MODEL,
-        name: "graph-sage",
-        _key: "graph-sage",
+        name: "graphsage_obgn_products",
+        _key: "graphsage_obgn_products",
         framework: {
             name: "pytorch",
             version: "1.9.0"
         },
-        invocation_name: "graph-sage",
+        invocation: {
+            invocation_name: "graphsage_obgn_products",
+            emb_dim: 47,
+            inference_batch_size: 1,
+            input: {
+                kind: "graph",
+                neighborhood: {
+                    number_of_hops: 3,
+                    samples_per_hop: [15, 10, 5]
+                },
+                feature_dim: 256,
+                features_input_key: "input__0",
+                adjacency_list_input_keys: ["input__5", "input__3", "input__1"],
+                adjacency_size_input_keys: ["input__6", "input__4", "input__2"]
+            },
+            output: {
+                output_key: "output__2",
+                index: 0
+            }
+        },
         data: [
             {
                 source_id: "AMAZON-PRODUCT-CoPurchase",
@@ -83,8 +112,6 @@ const seedData = [
             ]
         },
         metadata: {
-            emb_dim: 256,
-            inference_batch_size: 64,
             schema: {
                 features: ["bag_of_words"],
                 type: "NUMERIC",

@@ -43,6 +43,16 @@ export function deleteEmbeddingsFieldEntries(destinationCollectionName: string, 
 function getCountDocumentsSameCollection(embeddingsState: EmbeddingsState, sourceFieldName: string): number {
     const dCol = db._collection(embeddingsState.destination_collection);
     const embedding_field_name = embeddingsState.emb_field_name;
+    if (embeddingsState.specific_documents.length > 0) {
+        return query`
+        LET specificDocuments = ${embeddingsState.specific_documents} 
+        RETURN COUNT(FOR sDoc in specificDocuments FOR doc in ${dCol}
+          FILTER doc._key == sDoc
+          FILTER doc.${sourceFieldName} != null
+          FILTER doc.${embedding_field_name} == null
+          RETURN 1)
+    `.toArray()[0];
+    }
     return query`
         RETURN COUNT(FOR doc in ${dCol}
           FILTER doc.${sourceFieldName} != null
@@ -56,6 +66,26 @@ function getCountDocumentsSeparateCollection(embeddingsState: EmbeddingsState, s
     const sCol = db._collection(embeddingsState.collection);
 
     const embedding_field_name = embeddingsState.emb_field_name;
+    if (embeddingsState.specific_documents.length > 0) {
+        return query`
+        LET specificDocuments = ${embeddingsState.specific_documents} 
+        RETURN COUNT(
+            FOR sDoc in specificDocuments
+                FOR doc in ${sCol}
+                    FILTER doc._key == sDoc
+                    FILTER doc.${sourceFieldName} != null
+                    LET emb_docs = (
+                        FOR emb_d in ${dCol}
+                            FILTER emb_d.doc_key == doc._key
+                            FILTER emb_d.${embedding_field_name} != null
+                            LIMIT 1
+                            RETURN 1
+                    )  
+                    FILTER LENGTH(emb_docs) == 0
+                    RETURN 1
+        )
+    `.toArray()[0];
+    }
 
     return query`
         RETURN COUNT(

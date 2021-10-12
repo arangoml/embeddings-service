@@ -13,6 +13,7 @@ export interface EmbeddingsState {
     destination_collection: string;
     status: EmbeddingsStatus;
     last_run_timestamp: string;
+    specific_documents: string[];
     _key: string;
 };
 
@@ -47,7 +48,11 @@ export const embeddingsStatusSchema = {
                     EmbeddingsStatus.DOES_NOT_EXIST,
                 ]
             },
-            "last_run_timestamp": { "type": "string" }
+            "last_run_timestamp": { "type": "string" },
+            "specific_documents": {
+                "type": "arrays",
+                "items": { "type": "string" }
+            }
         },
         "required": [
             "model_key",
@@ -56,7 +61,8 @@ export const embeddingsStatusSchema = {
             "collection",
             "destination_collection",
             "status",
-            "last_run_timestamp"
+            "last_run_timestamp",
+            "specific_documents"
         ]
     },
     level: "moderate",
