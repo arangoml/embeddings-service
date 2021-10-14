@@ -23,6 +23,9 @@ import {queueBatch, ScriptName} from "../services/emb_generation_service";
 
 const {argv} = module.context;
 
+let failures = 0;
+const FAILURE_THRESHOLD = 50;
+
 const {batchIndex, batchSize, batchOffset, numberOfBatches, collectionName, destinationCollection, graphName, modelMetadata, fieldName, embeddingsRunColName, separateCollection}: GenerationJobInputArgs = argv[0];
 const isLastBatch = (batchIndex >= (numberOfBatches - 1));
 
@@ -227,6 +230,7 @@ function getAndSaveGraphEmbeddingsForMiniBatch(docCollection: Collection, dColle
                     profileCall(insertGraphEmbeddingsIntoDBSameCollection)([miniBatch[i]], [embedding], fieldName, docCollection, modelMetadata);
                 }
             } else {
+                failures++;
                 logErr(res);
                 logErr("Failed to get requested embedding for minibatch!")
             }
@@ -244,6 +248,10 @@ function handleFailure(currentBatchFailed: boolean, isTheLastBatch: boolean, col
     }
 }
 
+function checkIfBatchFailed(): Boolean {
+    return failures >= FAILURE_THRESHOLD;
+}
+
 function createGraphEmbeddings() {
     const docCollection = db._collection(collectionName);
     const dCollection = db._collection(destinationCollection);
@@ -255,6 +263,9 @@ function createGraphEmbeddings() {
             const graphInput: GraphInput = modelMetadata.invocation.input;
             chunkArray(targetIds, modelMetadata.invocation.inference_batch_size)
                 .forEach((chunk) => {
+                    if (checkIfBatchFailed()) {
+                        throw new Error("Too many embedding requests failed");
+                    }
                     const query = buildGraphQuery(graphInput, graphName, chunk, docCollection);
                     const traversalResult = db._query(query).toArray();
                     chunkArray(traversalResult, modelMetadata.invocation.inference_batch_size)
@@ -278,7 +289,7 @@ function createGraphEmbeddings() {
     }
 
     // No matter what, queue the next batch
-    if (!isLastBatch) {
+    if (!isLastBatch && !checkIfBatchFailed()) {
         const q = queues.get(EMB_QUEUE_NAME);
         queueBatch(ScriptName.GRAPH,
             batchIndex + 1,
@@ -294,6 +305,8 @@ function createGraphEmbeddings() {
             separateCollection,
             embeddingsRunColName
         );
+    } else if(checkIfBatchFailed()) {
+        logErr("Too many embedding requests failed, stopping process");
     } else {
         // If it's the last batch, then we can drop the embeddingsRun collection
         db._collection(embeddingsRunColName).drop();
