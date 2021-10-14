@@ -50,7 +50,7 @@ export const embeddingsStatusSchema = {
             },
             "last_run_timestamp": { "type": "string" },
             "specific_documents": {
-                "type": "arrays",
+                "type": "array",
                 "items": { "type": "string" }
             }
         },
