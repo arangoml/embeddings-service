@@ -24,7 +24,7 @@ import {queueBatch, ScriptName} from "../services/emb_generation_service";
 const {argv} = module.context;
 
 let failures = 0;
-const FAILURE_THRESHOLD = 50;
+const FAILURE_THRESHOLD = 25;
 
 const {batchIndex, batchSize, batchOffset, numberOfBatches, collectionName, destinationCollection, graphName, modelMetadata, fieldName, embeddingsRunColName, separateCollection}: GenerationJobInputArgs = argv[0];
 const isLastBatch = (batchIndex >= (numberOfBatches - 1));
