@@ -140,53 +140,60 @@ function formatGraphInputs(features: any[][], adj_lists: number[][][], graphInpu
     // TODO: Make this generalize across N > 1 batches!!
     // Now put it all together
     const inputList = [];
-    const batchSize = features.length;
 
-    const paddedFeatures = features.map(feats => padFeaturesMatrix(feats, 1000));
+    const paddedFeatures = padFeaturesMatrix(features, 1000);
 
     inputList.push({
         name: graphInput.features_input_key,
         data: paddedFeatures,
-        shape: [batchSize, paddedFeatures[0].length, paddedFeatures[0][0].length],
+        shape: [paddedFeatures.length, paddedFeatures[0].length],
         datatype: "FP32"
     });
 
     for (let i = 0; i < graphInput.adjacency_list_input_keys.length; i++) {
-        if (i < adj_lists.length) {
-            inputList.push({
-                name: graphInput.adjacency_list_input_keys[i],
-                data: transposeMatrix(adj_lists[i]),
-                shape: [batchSize, 2, adj_lists[i].length],
-                datatype: "INT64"
-            });
-        } else {
-            inputList.push({
-                name: graphInput.adjacency_list_input_keys[i],
-                data: [],
-                shape: [2, 0],
-                datatype: "INT64"
-            });
-        }
+        const createNewInputKeysObject = () => {
+            if (i < adj_lists.length) {
+                return {
+                    name: graphInput.adjacency_list_input_keys[i],
+                    data: transposeMatrix(adj_lists[i]),
+                    shape: [2, adj_lists[i].length],
+                    datatype: "INT64"
+                };
+            } else {
+                return {
+                    name: graphInput.adjacency_list_input_keys[i],
+                    data: [],
+                    shape: [2, 0],
+                    datatype: "INT64"
+                };
+            }
+        };
+        const newInputKeysObject = createNewInputKeysObject();
+        inputList.push(newInputKeysObject);
     }
 
     const adjacencySizes = createAdjacencySizes(adj_lists);
 
     for (let i = 0; i < graphInput.adjacency_size_input_keys.length; i++) {
-        if (i < adjacencySizes.length) {
-            inputList.push({
-                name: graphInput.adjacency_size_input_keys[i],
-                data: adjacencySizes[i],
-                shape: [2],
-                datatype: "INT64"
-            });
-        } else {
-            inputList.push({
-                name: graphInput.adjacency_size_input_keys[i],
-                data: [0,0],
-                shape: [2],
-                datatype: "INT64"
-            });
-        }
+        const createNewSizeObject = () => {
+            if (i < adjacencySizes.length) {
+                return {
+                    name: graphInput.adjacency_size_input_keys[i],
+                    data: adjacencySizes[i],
+                    shape: [2],
+                    datatype: "INT64"
+                };
+            } else {
+                return {
+                    name: graphInput.adjacency_size_input_keys[i],
+                    data: [0, 0],
+                    shape: [2],
+                    datatype: "INT64"
+                };
+            }
+        };
+        const newSizeObject = createNewSizeObject();
+        inputList.push(newSizeObject);
     }
 
     return {
