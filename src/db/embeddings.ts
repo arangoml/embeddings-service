@@ -109,10 +109,14 @@ export function findNearestNeighborEmbeddingsForDocumentKey(
                 `;
             }
         }
-        forStatement = aql`FOR v in ${embeddingsCollection}`;
+        forStatement = aql`
+            FOR v in ${embeddingsCollection}
+                FILTER v.doc_key != ${documentKey}
+        `;
     } else {
         forStatement = aql`
             FOR v in ${documentCollection}
+                FILTER v._key != ${documentKey}
                 FILTER HAS(v, ${embeddingFieldName})
         `;
         returnStatement = fullDocuments ? aql`RETURN v` : aql`
