@@ -10,6 +10,7 @@ import {profileCall} from "../utils/profiling";
 import {manageEmbeddingsForDocFieldAndModel} from "../services/emb_management_service";
 import Request = Foxx.Request;
 import Response = Foxx.Response;
+import {getStatusByKey} from "../db/embeddings_status";
 
 function initialValidationGenerateEmbParams(req: Request, res: Response): void {
     // check if model type is valid
@@ -58,4 +59,14 @@ export function generateEmbeddings(req: Request, res: Response): void {
     const embStatusDict = profileCall(getOrCreateEmbeddingsStatusDict)(graphName, collectionName, destinationCollectionName, fieldName, modelMetadata, documentKeys);
     const response_dict = profileCall(manageEmbeddingsForDocFieldAndModel)(embStatusDict, modelMetadata, overwriteExisting, documentKeys);
     res.json(response_dict);
+}
+
+export function removeAndCancelEmbeddingsGeneration(req: Request, res: Response): void {
+    const {statusId} = req.pathParams;
+
+    const status = getStatusByKey(statusId);
+    if (status == null) {
+        res.throw(404, "Embeddings status not found");
+    }
+    // TODO: If running - add cancel request - if not, delete it
 }

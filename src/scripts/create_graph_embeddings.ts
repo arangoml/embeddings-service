@@ -286,7 +286,6 @@ function createGraphEmbeddings() {
                     updateEmbeddingsStatus(EmbeddingsStatus.COMPLETED, collectionName, destinationCollection, fieldName, modelMetadata);
                 }
             }
-            updateEmbeddingsStatus(EmbeddingsStatus.FAILED, collectionName, destinationCollection, fieldName, modelMetadata);
         } else {
             throw TypeError("Model Invocation Input Type is not 'graph'.")
         }

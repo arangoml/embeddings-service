@@ -23,8 +23,21 @@ router.post("/embeddings", retrieveEmbeddings)
             fields: joi.array().default([]),
             labelMapping: joi.array().items(joi.string()),
             fullDocuments: joi.bool().default(false)
+        }).required(),
+        ["application/json"],
+        `This endpoint facilitates the retrieval of embeddings for a specified collection or graph.`
+    )
+    .response(200,
+        joi.object({
+            embeddings: joi.array().items(
+                joi.object()
+            ),
+            possiblyStale: joi.bool()
         })
     );
+
+
+// router.delete("/generateEmbeddings/:statusId", removeAndCancelEmbeddingsGeneration)
 
 router.post("/nearest_neighbors", retrieveNearestNeighbors)
     .body(
@@ -37,6 +50,14 @@ router.post("/nearest_neighbors", retrieveNearestNeighbors)
             fullDocuments: joi.bool().default(false),
             fields: joi.array().default([]),
             numberOfNeighbors: joi.number().required()
+        }).required(),
+        ["application/json"],
+        `This endpoint facilitates the retrieval of the nearest neighbors of a document using the Cosine Similarity between embeddings for a specified collection or graph.`
+    )
+    .response(200,
+        joi.object({
+            embeddings: joi.object(),
+            possiblyStale: joi.bool()
         })
     );
 
